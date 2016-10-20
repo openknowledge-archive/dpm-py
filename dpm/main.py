@@ -12,6 +12,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import os
 import sys
 from builtins import input
 from getpass import getpass
@@ -22,17 +23,48 @@ import datapackage
 import requests
 from configobj import ConfigObj
 from requests.exceptions import ConnectionError
-from .runtime import credsfile, config
+from .runtime import credsfile, configfile
+from . import __version__
 
 
 # Disable click warning. We are trying to be python3-compatible
 # with unicode_literals.
 click.disable_unicode_literals_warning = True
 
+
 @click.group()
-@click.version_option(version='0.1')
-def cli():
-    pass
+@click.version_option(version=__version__)
+@click.option('--config', 'configfile', default=configfile,
+              help='Use custom config file. Default ~/.dpm/config')
+@click.pass_context
+def cli(ctx, configfile):
+    config = ConfigObj(configfile)
+    ctx.obj = config
+    defaults = {
+        'server': os.environ.get('DPM_SERVER') \
+                  or config.get('server') \
+                  or 'https://example.com/',
+        'username': os.environ.get('DPM_USERNAME') or config.get('username'),
+        'password': os.environ.get('DPM_PASSWORD') or config.get('password')
+    }
+    ctx.default_map = {
+        'publish': defaults,
+        'configure': defaults,
+    }
+
+
+@cli.command()
+@click.pass_context
+def configure(ctx, **kwargs):
+    """
+    Update configuration options. Configuration will be saved in ~/.dpm/conf
+    """
+    print('Leave blank to use default value.')
+    config = ctx.obj
+    config['username'] = input('Username: ')
+    config['password'] = getpass('Your password: ')
+    config['server'] = input('Server URL: ')
+    config.write()
 
 
 @cli.command()
@@ -63,15 +95,20 @@ def validate():
 
 
 @cli.command()
+@click.option('--username', prompt=True)
+@click.option('--password', prompt=True, hide_input=True)
+@click.option('--server')
 @click.pass_context
-def publish(ctx):
+def publish(ctx, username, password, server):
+    """
+    Publish datapackage to the registry server.
+    """
     dp = ctx.invoke(validate)
-    credentials = get_credentials()
-    server_url = config.get('server_url', 'https://example.com')
+    #credentials = get_credentials()  # TODO
 
     try:
         response = requests.post(
-            '%s/api/v1/package' % server_url,
+            '%s/api/v1/package' % server,
             json=dp.to_dict(),
             allow_redirects=True)
     except (OSError, IOError, ConnectionError) as e:
