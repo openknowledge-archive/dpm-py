@@ -11,7 +11,6 @@ import os
 from os.path import exists, join
 
 from .utils.compat import expanduser
-from configobj import ConfigObj
 
 
 configdir = expanduser('~/.dpm')
@@ -22,6 +21,5 @@ if not exists(configdir):
 credsfile = join(configdir, 'creds.jwt')
 
 # The config file in INI(ConfigObj) format.
-configfile = join(configdir, 'dpm.conf')
+configfile = join(configdir, 'config')
 
-config = ConfigObj(configfile)
