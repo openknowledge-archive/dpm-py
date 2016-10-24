@@ -43,7 +43,7 @@ def cli(ctx, configfile):
     defaults = {
         'server': os.environ.get('DPM_SERVER') \
                   or config.get('server') \
-                  or 'https://example.com/',
+                  or 'https://example.com',
         'username': os.environ.get('DPM_USERNAME') or config.get('username'),
         'password': os.environ.get('DPM_PASSWORD') or config.get('password')
     }
@@ -95,14 +95,17 @@ def validate():
 
 
 @cli.command()
-@click.option('--username', prompt=True)
-@click.option('--password', prompt=True, hide_input=True)
+@click.option('--username')
+@click.option('--password')
 @click.option('--server')
 @click.pass_context
 def publish(ctx, username, password, server):
     """
     Publish datapackage to the registry server.
     """
+    if not (username or password):
+        print('Please launch `dpm configure` first.')
+        sys.exit(1)
     dp = ctx.invoke(validate)
     #credentials = get_credentials()  # TODO
 
@@ -124,8 +127,15 @@ def publish(ctx, username, password, server):
         print('Network error. Please check your connection settings')
         sys.exit(1)
 
-    if response.json():
-        if response.json().get('error_code') == 'DP_INVALID':
+    jsonresponse = None
+    try:
+        jsonresponse = response.json()
+    except Exception as e:
+        print('Original error was: %s' % repr(e))
+        print('Invalid JSON response from server')
+        sys.exit(1)
+    if jsonresponse:
+        if jsonresponse.get('error_code') == 'DP_INVALID':
             print('datapackage.json is invalid')
             sys.exit(1)
     print(response.status_code)

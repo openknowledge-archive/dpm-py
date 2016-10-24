@@ -19,7 +19,7 @@ class PublishInvalidTest(BaseCliTestCase):
     """
 
     def setUp(self):
-        # GIVEN datapackage that can be trated as valid by the dpm
+        # GIVEN datapackage that can be treated as valid by the dpm
         valid_dp = datapackage.DataPackage({
             "name": "some-name",
             "resources": [
