@@ -26,8 +26,7 @@ class ConnectionErrorTest(BaseCliTestCase):
                 { "name": "some-resource", "path": "./data/some_data.csv", }
             ]
         })
-        patch('dpm.main.datapackage', DataPackage=lambda *a: valid_dp).start()
-        patch('dpm.main.exists', lambda *a: True).start()
+        patch('dpm.main.client', validate=lambda *a: valid_dp).start()
 
         # AND valid credentials
         patch('dpm.main.get_credentials', lambda *a: 'fake creds').start()
@@ -36,7 +35,7 @@ class ConnectionErrorTest(BaseCliTestCase):
         # GIVEN socket that throws OSError
         with patch("socket.socket.connect", side_effect=OSError) as mocksock:
             # WHEN dpm publish is invoked
-            result = self.invoke(cli, ['publish'])
+            result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
 
             # THEN socket.connect should be called once with server address
             mocksock.assert_called_once_with(('example.com', 443))
@@ -49,7 +48,7 @@ class ConnectionErrorTest(BaseCliTestCase):
         # GIVEN socket that throws IOError
         with patch("socket.socket.connect", side_effect=IOError) as mocksock:
             # WHEN dpm publish is invoked
-            result = self.invoke(cli, ['publish'])
+            result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
 
             # THEN socket.connect should be called once with server address
             mocksock.assert_called_once_with(('example.com', 443))
@@ -63,7 +62,7 @@ class ConnectionErrorTest(BaseCliTestCase):
         with patch("socket.socket.connect", side_effect=TypeError) as mocksock:
             # WHEN dpm publish is invoked
             try:
-                result = self.invoke(cli, ['publish'])
+                result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
             except Exception as e:
                 result = e
 

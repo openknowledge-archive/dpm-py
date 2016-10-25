@@ -50,7 +50,7 @@ class SimpleTestCase(TestCase):
 
 class BaseCliTestCase(SimpleTestCase):
     mock_requests = True  # Flag if the testcase should mock out requests library.
-    isolate = True  # Falg if the test should run in isolated environment.
+    isolate = True  # Flag if the test should run in isolated environment.
 
     def _pre_setup(self):
         # Use Mocket to prevent any real network access from tests
@@ -61,22 +61,19 @@ class BaseCliTestCase(SimpleTestCase):
         if self.mock_requests:
             responses.start()
 
-        # Start with empty config by default
-        #patch('dpm.main.ConfigObj', lambda *a: {}).start()
+        # Start with default config
         self.config = {
             'username': 'user',
             'pasword': 'password',
         }
         patch('dpm.main.ConfigObj', lambda *a: self.config).start()
-        #self.config.update(
-            #server_url='https://example.com'
-        #)
 
         self.runner = CliRunner()
 
     def _post_teardown(self):
         """ Disable all mocks """
         if self.mock_requests:
+            responses.reset()
             responses.stop()
         # TODO: Mocket.disable() sometimes makes tests hang.
         #Mocket.disable()

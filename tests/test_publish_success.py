@@ -12,10 +12,10 @@ from dpm.main import cli
 from .base import BaseCliTestCase
 
 
-class PublishInvalidTest(BaseCliTestCase):
+class PublishSuccessTest(BaseCliTestCase):
     """
-    When user publishes datapackage, which is deemed invalid by server, the error message should
-    be displayed.
+    When user publishes valid datapackage, and server accepts it, dpm should
+    report sucess.
     """
 
     def setUp(self):
@@ -31,17 +31,17 @@ class PublishInvalidTest(BaseCliTestCase):
         # AND valid credentials
         patch('dpm.main.get_credentials', lambda *a: 'fake creds').start()
 
-    def test_publish_invalid(self):
-        # GIVEN the server that rejects datapackage as invalid
+    def test_publish_success(self):
+        # GIVEN the server that accepts datapackage
         responses.add(
                 responses.PUT, 'https://example.com/api/package/testpub/some-datapackage',
-                json={'message': 'invalid datapackage json'},
-                status=400)
+                json={'message': 'OK'},
+                status=200)
 
         # WHEN `dpm publish` is invoked
         result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
 
-        # THEN exit code should be 1
-        self.assertEqual(result.exit_code, 1)
-        # AND 'datapackage.json is invalid' should be printed to stdout
-        self.assertTrue('invalid datapackage json' in result.output)
+        # THEN exit code should be 0
+        self.assertEqual(result.exit_code, 0)
+        # AND 'publish OK' should be printed to stdout
+        self.assertTrue('publish ok' in result.output)
