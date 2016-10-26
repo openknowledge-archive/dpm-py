@@ -26,4 +26,4 @@ class ValidateNonDatapackageDirTest(BaseCliTestCase):
             # THEN exit code should be 1
             self.assertEqual(result.exit_code, 1)
             # AND 'datapackage.json not found' should be printed to stdout
-            self.assertTrue('datapackage.json not found' in result.output)
+            self.assertRegexpMatches(result.output, 'datapackage.json not found')

@@ -34,7 +34,7 @@ class PublishInvalidTest(BaseCliTestCase):
     def test_publish_invalid(self):
         # GIVEN the server that rejects datapackage as invalid
         responses.add(
-                responses.PUT, 'https://example.com/api/package/testpub/some-datapackage',
+                responses.PUT, 'https://example.com/api/package/user/some-datapackage',
                 json={'message': 'invalid datapackage json'},
                 status=400)
 
@@ -44,4 +44,4 @@ class PublishInvalidTest(BaseCliTestCase):
         # THEN exit code should be 1
         self.assertEqual(result.exit_code, 1)
         # AND 'datapackage.json is invalid' should be printed to stdout
-        self.assertTrue('invalid datapackage json' in result.output)
+        self.assertRegexpMatches(result.output, 'invalid datapackage json')

@@ -8,8 +8,9 @@ import sys
 from unittest import TestCase
 
 import responses
+from configobj import ConfigObj
 from click.testing import CliRunner, Result
-from mock import patch
+from mock import patch, MagicMock, Mock
 from mocket.mocket import Mocket
 
 
@@ -62,10 +63,14 @@ class BaseCliTestCase(SimpleTestCase):
             responses.start()
 
         # Start with default config
-        self.config = {
+        self._config = ConfigObj({
             'username': 'user',
             'pasword': 'password',
-        }
+        })
+        self.config = MagicMock(spec_set=self._config)
+        self.config.__getitem__.side_effect = self._config.__getitem__
+        self.config.__setitem__.side_effect = self._config.__setitem__
+        self.config.get.side_effect = self._config.get
         patch('dpm.main.ConfigObj', lambda *a: self.config).start()
 
         self.runner = CliRunner()
@@ -104,5 +109,3 @@ class BaseCliTestCase(SimpleTestCase):
                             exception=exception,
                             exc_info=exc_info)
         return result
-
-
