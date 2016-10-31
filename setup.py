@@ -3,6 +3,11 @@ import os
 from os.path import join, dirname
 
 import dpm
+
+# Workaround for slow entry points https://github.com/pypa/setuptools/issues/510
+# Taken from https://github.com/ninjaaron/fast-entry_points
+import fastentrypoints
+
 from setuptools import setup, find_packages
 
 
