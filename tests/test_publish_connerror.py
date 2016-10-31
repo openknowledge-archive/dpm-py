@@ -26,7 +26,7 @@ class ConnectionErrorTest(BaseCliTestCase):
                 { "name": "some-resource", "path": "./data/some_data.csv", }
             ]
         })
-        patch('dpm.main.client', validate=lambda *a: valid_dp).start()
+        patch('dpm.main.client.do_publish.validate', lambda *a: valid_dp).start()
 
         # AND valid credentials
         patch('dpm.main.get_credentials', lambda *a: 'fake creds').start()

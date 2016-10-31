@@ -8,10 +8,18 @@ import sys
 from unittest import TestCase
 
 import responses
+import six
 from configobj import ConfigObj
 from click.testing import CliRunner, Result
 from mock import patch, MagicMock, Mock
 from mocket.mocket import Mocket
+
+
+if six.PY2:
+    from cStringIO import StringIO
+else:
+    import io
+
 
 
 class SimpleTestCase(TestCase):
@@ -51,7 +59,7 @@ class SimpleTestCase(TestCase):
 
 class BaseCliTestCase(SimpleTestCase):
     mock_requests = True  # Flag if the testcase should mock out requests library.
-    isolate = True  # Flag if the test should run in isolated environment.
+    isolate = False  # Flag if the test should run in isolated environment.
 
     def _pre_setup(self):
         # Use Mocket to prevent any real network access from tests
@@ -65,7 +73,7 @@ class BaseCliTestCase(SimpleTestCase):
         # Start with default config
         self._config = ConfigObj({
             'username': 'user',
-            'pasword': 'password',
+            'password': 'password',
         })
         self.config = MagicMock(spec_set=self._config)
         self.config.__getitem__.side_effect = self._config.__getitem__
@@ -93,19 +101,29 @@ class BaseCliTestCase(SimpleTestCase):
         place of sys.stdin and sys.stdout
         """
         kwargs.setdefault('catch_exceptions', False)
-        if self.isolate:
-            result = self.runner.invoke(cli, args, **kwargs)
-        else:
-            exit_code = 0
-            exception = None
-            exc_info = None
-            try:
-                cli.main(args=args, prog_name=cli.name or 'root')
-            except SystemExit as e:
-                exit_code = e.code
-            result = Result(runner=self.runner,
-                            output_bytes=b'',
-                            exit_code=exit_code,
-                            exception=exception,
-                            exc_info=exc_info)
+        with self.runner.isolated_filesystem():
+            if self.isolate:
+                result = self.runner.invoke(cli, args, **kwargs)
+            else:
+                if six.PY2:
+                    stdout = stderr = bytes_output = StringIO()
+                else:
+                    bytes_output = io.BytesIO()
+                    stdout = stderr = io.TextIOWrapper(
+                        bytes_output, encoding='utf-8')
+
+                patch('click.utils._default_text_stdout', lambda: stdout).start()
+                patch('click.utils._default_text_stderr', lambda: stderr).start()
+                exit_code = 0
+                exception = None
+                exc_info = None
+                try:
+                    cli.main(args=args, prog_name=cli.name or 'root')
+                except SystemExit as e:
+                    exit_code = e.code
+                result = Result(runner=self.runner,
+                                output_bytes=bytes_output.getvalue(),
+                                exit_code=exit_code,
+                                exception=exception,
+                                exc_info=exc_info)
         return result
