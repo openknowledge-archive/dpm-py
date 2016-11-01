@@ -20,7 +20,7 @@ def publish(ctx, username, password, server):
 
     if not (username and password):
         secho('Error', fg='red', nl=False)
-        echo(': missing user credentials. \nTo enter your credentials please run:')
+        echo(': missing user credentials. \n\nTo enter your credentials please run:')
         echo('\n    dpmpy configure\n')
         sys.exit(1)
 
@@ -30,8 +30,8 @@ def publish(ctx, username, password, server):
 
     token = authresponse.json().get('token')
     if not token:
-        secho('FAIL', fg='red')
-        echo('Error: server did not return auth token', color='red')
+        secho('FAIL\n', fg='red')
+        echo('Error: server did not return auth token\n')
         sys.exit(1)
     secho('ok', fg='green')
 
@@ -49,22 +49,21 @@ def request(method, *args, **kwargs):
     try:
         response = methods.get(method)(*args, **kwargs)
     except (OSError, IOError, ConnectionError) as e:
-        secho('FAIL', fg='red')
-        echo('Original error was: %s' % repr(e))
-        echo('Network error. Please check your connection settings')
+        secho('FAIL\n', fg='red')
+        echo('Original error was: %s\n' % repr(e))
+        echo('Network error. Please check your connection settings\n')
         sys.exit(1)
 
     try:
         jsonresponse = response.json()
     except Exception as e:
-        secho('FAIL', fg='red')
-        echo('Original error was: %s' % repr(e))
-        echo('Invalid JSON response from server')
+        secho('FAIL\n', fg='red')
+        echo('Invalid JSON response from server\n')
         sys.exit(1)
 
     if response.status_code not in (200, 201):
-        secho('FAIL', fg='red')
-        echo('Server response: %s %s' % (
+        secho('FAIL\n', fg='red')
+        echo('Server response: %s %s\n' % (
             response.status_code,
             (jsonresponse.get('message') or jsonresponse.get('description'))
         ))
