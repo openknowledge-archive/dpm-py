@@ -26,7 +26,7 @@ class ConnectionErrorTest(BaseCliTestCase):
                 { "name": "some-resource", "path": "./data/some_data.csv", }
             ]
         })
-        patch('dpm.main.client', validate=lambda *a: valid_dp).start()
+        patch('dpm.main.client.do_publish.validate', lambda *a: valid_dp).start()
 
         # AND valid credentials
         patch('dpm.main.get_credentials', lambda *a: 'fake creds').start()
@@ -37,12 +37,12 @@ class ConnectionErrorTest(BaseCliTestCase):
             # WHEN dpm publish is invoked
             result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
 
-            # THEN socket.connect should be called once with server address
+            # THEN 'Network error' should be printed to stdout
+            self.assertRegexpMatches(result.output, 'Network error')
+            # AND socket.connect should be called once with server address
             mocksock.assert_called_once_with(('example.com', 443))
             # AND exit code should be 1
             self.assertEqual(result.exit_code, 1)
-            # AND 'Network error' should be printed to stdout
-            self.assertTrue('Network error' in result.output)
 
     def test_connerror_ioerror(self):
         # GIVEN socket that throws IOError
@@ -50,12 +50,12 @@ class ConnectionErrorTest(BaseCliTestCase):
             # WHEN dpm publish is invoked
             result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
 
-            # THEN socket.connect should be called once with server address
+            # THEN 'Network error' should be printed to stdout
+            self.assertRegexpMatches(result.output, 'Network error')
+            # AND socket.connect should be called once with server address
             mocksock.assert_called_once_with(('example.com', 443))
             # AND exit code should be 1
             self.assertEqual(result.exit_code, 1)
-            # AND 'Network error' should be printed to stdout
-            self.assertTrue('Network error' in result.output)
 
     def test_connerror_typeerror(self):
         # GIVEN socket that throws TypeError
@@ -88,4 +88,4 @@ class ConnectionErrorTest(BaseCliTestCase):
         # THEN exit code should be 1
         self.assertEqual(result.exit_code, 1)
         # AND 'Network error' should be printed to stdout
-        self.assertTrue('Network error' in result.output)
+        self.assertRegexpMatches(result.output, 'Network error')
