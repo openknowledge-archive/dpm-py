@@ -5,10 +5,12 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import sys
+from builtins import open
+from os.path import basename, getsize
 
 import requests
 from requests.exceptions import ConnectionError
-from click import echo, secho
+from click import echo, secho, progressbar
 from .do_validate import validate
 
 
@@ -42,6 +44,30 @@ def publish(ctx, username, password, server):
         headers={'Authorization': 'Bearer %s' % token})
     secho('ok', fg='green')
 
+    for resource in dp.resources:
+        echo('Uploading resource %s' % resource.local_data_path)
+
+        # Ask the server for s3 put url for a resource.
+        response = request('POST',
+            '%s/api/auth/bitstore_upload' % (server),
+            json={
+                'publisher': username,
+                'package': dp.descriptor['name'],
+                'path': basename(resource.local_data_path)
+            },
+            headers={'Authorization': 'Bearer %s' % token})
+        puturl = response.json().get('key')
+        if not puturl:
+            secho('ERROR ', fg='red', nl=False)
+            echo('server did not return resource put url\n')
+            sys.exit(1)
+
+        stream = Uploader(resource.local_data_path)
+
+        with progressbar(length=stream.len, label=' ') as bar:
+            stream.on_progress = bar.update
+            response = requests.put(puturl, data=stream)
+
 
 def request(method, *args, **kwargs):
     methods = {'POST': requests.post, 'PUT': requests.put}
@@ -70,3 +96,30 @@ def request(method, *args, **kwargs):
         sys.exit(1)
 
     return response
+
+
+class Uploader(object):
+    """
+    Chunked file uploader. Implements file read api with ability to
+    report upload progress to specified callback.
+
+    Usage:
+        stream = Uploader('/path/file.csv')
+        with click.progressbar(length=stream.len, label=' ') as bar:
+            stream.on_progress = bar.update
+            response = requests.put(url, data=stream)
+    """
+    on_progress = None
+
+    def __init__(self, path):
+        self.len = getsize(path)
+        self._file = open(path, 'rb')
+
+    def read(self, size):
+        # TODO: remove this artificial delay
+        import time
+        time.sleep(0.005)
+
+        if self.on_progress:
+            self.on_progress(400)
+        return self._file.read(400)
