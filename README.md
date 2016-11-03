@@ -5,7 +5,9 @@
 [![Test Coverage](https://coveralls.io/repos/frictionlessdata/dpmpy/badge.svg?branch=master&service=github)](https://coveralls.io/github/frictionlessdata/dpmpy)
 ![Support Python versions 2.7, 3.3, 3.4 and 3.5](https://img.shields.io/badge/python-2.7%2C%203.3%2C%203.4%2C%203.5-blue.svg)
 
-Dpmpy is a datapackage manager. For more about data packages see http://frictionlessdata.io/data-packages
+Dpmpy is a command-line datapackage manager. It allows to validate and publish datapackages to
+the datapackage registry server. For more about data packages see
+http://frictionlessdata.io/data-packages
 
 ## Install
 
@@ -17,7 +19,7 @@ Until the new code available on pypi, you can install it from this repo:
 
 ## Configuration
 
-Dpm can be configured using `dpmpy configure` command. It will ask you
+Dpmpy can be configured using `dpmpy configure` command. It will ask you
 to provide username, password and server address of datapackage registry.
 
 The config is stored in ~/.dpm/config, you can edit it with text editor.
@@ -28,6 +30,12 @@ username = myname
 password = mypass
 server = https://example.com
 ```
+
+## Usage
+
+To publish datapackage, go to the datapackage directory (with datapackage.json) and
+launch `dpmpy publish`. If your configured username and password are correct, dpmpy will
+upload datapackage.json and all relevant resources to the registry server.
 
 ## Testing
 
