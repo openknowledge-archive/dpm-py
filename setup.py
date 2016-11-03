@@ -17,7 +17,8 @@ INSTALL_REQUIRES = [
     'configobj',
     'datapackage',
     'requests',
-    'six'
+    'six',
+    'future'
 ]
 
 TESTS_REQUIRE = [
