@@ -29,9 +29,6 @@ class PublishSuccessTest(BaseCliTestCase):
         })
         patch('dpm.main.client.do_publish.validate', lambda *a: self.valid_dp).start()
 
-        # AND valid credentials
-        patch('dpm.main.get_credentials', lambda *a: 'fake creds').start()
-
     @patch('dpm.client.do_publish.open', mock_open())
     @patch('dpm.client.do_publish.getsize', lambda a: 5)
     def test_publish_success(self):

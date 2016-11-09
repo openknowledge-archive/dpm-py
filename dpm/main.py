@@ -33,8 +33,9 @@ click.disable_unicode_literals_warning = True
 @click.version_option(version=__version__)
 @click.option('--config', 'configfile', default=configfile,
               help='Use custom config file. Default ~/.dpm/config')
+@click.option('--debug', is_flag=True, default=False)
 @click.pass_context
-def cli(ctx, configfile):
+def cli(ctx, configfile, debug):
     config = ConfigObj(configfile)
     ctx.obj = config
     defaults = {
@@ -42,7 +43,8 @@ def cli(ctx, configfile):
                   or config.get('server') \
                   or DEFAULT_SERVER,
         'username': os.environ.get('DPM_USERNAME') or config.get('username'),
-        'password': os.environ.get('DPM_PASSWORD') or config.get('password')
+        'password': os.environ.get('DPM_PASSWORD') or config.get('password'),
+        'debug': debug
     }
     ctx.default_map = {
         'publish': defaults,
@@ -75,43 +77,14 @@ def validate():
 @click.option('--password')
 @click.option('--server')
 @click.option('--publisher')
+@click.option('--debug', is_flag=True)
 @click.pass_context
-def publish(ctx, username, password, server, publisher):
+def publish(ctx, username, password, server, publisher, debug):
     """
     Publish datapackage to the registry server.
     """
-    client.publish(ctx, username, password, server)
+    client.publish(ctx, username, password, server, debug)
     click.echo('publish ok')
-
-
-def get_credentials():
-    """
-    Get credentials to authenticate user for server. If cached credentials are invalid,
-    generate new.
-
-    :return:
-        str -- Credentials string
-
-    TODO: this is basically a stub. Should use real credentials format instead of email\password
-    """
-    if exists(credsfile) and not isfile(credsfile):
-        # credentials file path is taken for dir or non-file. Exit.
-        print(
-            "Can't generate new credentials. %s should be a file."
-            " Please remove it and try again." % credsfile)
-        sys.exit(1)
-
-    if not exists(credsfile):
-        print('Please provide email and password you used to signup at data portal.')
-        email = input('Your email: ')
-        password = getpass('Your password: ')
-        with open(credsfile, 'w+') as credsfileh:
-            credsfileh.write('%s\n%s' % (email, password))
-
-    credentials = open(credsfile).read()
-
-    # TODO: check if credentials are valid?
-    return credentials
 
 
 if __name__ == '__main__':

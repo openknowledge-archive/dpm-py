@@ -28,9 +28,6 @@ class PublishInvalidTest(BaseCliTestCase):
         })
         patch('dpm.main.client.do_publish.validate', lambda *a: valid_dp).start()
 
-        # AND valid credentials
-        patch('dpm.main.get_credentials', lambda *a: 'fake creds').start()
-
     def test_publish_invalid(self):
         # GIVEN the server that accepts any user
         responses.add(

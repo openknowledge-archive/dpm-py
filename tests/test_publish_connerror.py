@@ -28,9 +28,6 @@ class ConnectionErrorTest(BaseCliTestCase):
         })
         patch('dpm.main.client.do_publish.validate', lambda *a: valid_dp).start()
 
-        # AND valid credentials
-        patch('dpm.main.get_credentials', lambda *a: 'fake creds').start()
-
     def test_connerror_oserror(self):
         # GIVEN socket that throws OSError
         with patch("socket.socket.connect", side_effect=OSError) as mocksock:

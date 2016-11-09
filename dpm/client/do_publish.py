@@ -14,7 +14,7 @@ from click import echo, secho, progressbar
 from .do_validate import validate
 
 
-def publish(ctx, username, password, server):
+def publish(ctx, username, password, server, debug):
     """
     Publish datapackage to the registry server.
     """
@@ -62,11 +62,15 @@ def publish(ctx, username, password, server):
             echo('server did not return resource put url\n')
             sys.exit(1)
 
-        stream = Uploader(resource.local_data_path)
+        filestream = ChunkReader(resource.local_data_path)
 
-        with progressbar(length=stream.len, label=' ') as bar:
-            stream.on_progress = bar.update
-            response = requests.put(puturl, data=stream)
+        if debug:
+            echo('Uploading to %s' % puturl)
+            echo('File size %d' % filestream.len)
+
+        with progressbar(length=filestream.len, label=' ') as bar:
+            filestream.on_progress = bar.update
+            response = requests.put(puturl, data=filestream)
 
 
 def request(method, *args, **kwargs):
@@ -98,16 +102,16 @@ def request(method, *args, **kwargs):
     return response
 
 
-class Uploader(object):
+class ChunkReader(object):
     """
-    Chunked file uploader. Implements file read api with ability to
-    report upload progress to specified callback.
+    Chunked file reader. Implements file read api with ability to
+    report read progress to specified callback.
 
     Usage:
-        stream = Uploader('/path/file.csv')
-        with click.progressbar(length=stream.len, label=' ') as bar:
-            stream.on_progress = bar.update
-            response = requests.put(url, data=stream)
+        filestream = ChunkReader('/path/file.csv')
+        with click.progressbar(length=filestream.len, label=' ') as bar:
+            filestream.on_progress = bar.update
+            response = requests.put(url, data=filestream)
     """
     on_progress = None
 
@@ -116,10 +120,6 @@ class Uploader(object):
         self._file = open(path, 'rb')
 
     def read(self, size):
-        # TODO: remove this artificial delay
-        import time
-        time.sleep(0.005)
-
         if self.on_progress:
-            self.on_progress(400)
-        return self._file.read(400)
+            self.on_progress(128 * 1024)
+        return self._file.read(128 * 1024)
