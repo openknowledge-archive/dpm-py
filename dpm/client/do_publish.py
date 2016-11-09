@@ -72,9 +72,18 @@ def publish(ctx, username, password, server, debug):
             filestream.on_progress = bar.update
             response = requests.put(puturl, data=filestream)
 
+    echo('Finalizing ... ', nl=False)
+    response = request('GET',
+        '%s/api/package/%s/%s/finalize' % (server, username, dp.descriptor['name']),
+        headers={'Authorization': 'Bearer %s' % token})
+    secho('ok', fg='green')
 
 def request(method, *args, **kwargs):
-    methods = {'POST': requests.post, 'PUT': requests.put}
+    methods = {
+        'POST': requests.post,
+        'PUT': requests.put,
+        'GET': requests.get
+    }
 
     try:
         response = methods.get(method)(*args, **kwargs)
