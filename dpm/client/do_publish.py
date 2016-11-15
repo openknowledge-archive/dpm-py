@@ -5,8 +5,9 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import sys
+import glob
 from builtins import open
-from os.path import basename, getsize
+from os.path import basename, getsize, realpath
 
 import requests
 from requests.exceptions import ConnectionError
@@ -71,6 +72,37 @@ def publish(ctx, username, password, server, debug):
         with progressbar(length=filestream.len, label=' ') as bar:
             filestream.on_progress = bar.update
             response = requests.put(puturl, data=filestream)
+
+    readme_list = glob.glob('README.*')
+    if readme_list:
+        readme_local_path = realpath(readme_list[0])
+        echo('Uploading %s' % basename(readme_local_path))
+        # Ask the server for s3 put url for a resource.
+        response = request('POST',
+        '%s/api/auth/bitstore_upload' % (server),
+        json={
+            'publisher': username,
+            'package': dp.descriptor['name'],
+            'path': basename(readme_local_path)
+        },
+        headers={'Authorization': 'Bearer %s' % token})
+        puturl = response.json().get('key')
+        if not puturl:
+            secho('ERROR ', fg='red', nl=False)
+            echo('server did not return resource put url\n')
+            sys.exit(1)
+
+        filestream = ChunkReader(readme_local_path)
+        
+        if debug:
+            echo('Uploading to %s' % puturl)
+            echo('File size %d' % filestream.len)
+
+        with progressbar(length=filestream.len, label=' ') as bar:
+            filestream.on_progress = bar.update
+            response = requests.put(puturl, data=filestream)
+    else:
+        echo('Warning: Publishing Package without README')
 
     echo('Finalizing ... ', nl=False)
     response = request('GET',

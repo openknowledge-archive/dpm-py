@@ -41,6 +41,7 @@ class PublishSuccessTest(BaseCliTestCase):
         })
         patch('dpm.main.client.do_publish.validate', lambda *a: self.valid_dp).start()
 
+    @patch('glob.glob', lambda a: ['README.md'])
     @patch('dpm.client.do_publish.open', mock_open())  # mock csv file open
     @patch('dpm.client.do_publish.getsize', lambda a: 5)  # mock csv file size
     def test_publish_success(self):
@@ -72,10 +73,11 @@ class PublishSuccessTest(BaseCliTestCase):
 
         # WHEN `dpm publish` is invoked
         result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
-
         # THEN 'publish ok' should be printed to stdout
         self.assertRegexpMatches(result.output, 'publish ok')
-        # AND 5 requests should be sent
+        #Checking README
+        self.assertIn('Uploading README', result.output)
+        # AND 6 requests should be sent (Including README)
         self.assertEqual(
             [(x.request.method, x.request.url, jsonify(x.request.body)) for x in responses.calls],
             [
@@ -89,6 +91,11 @@ class PublishSuccessTest(BaseCliTestCase):
                 ('POST', 'https://example.com/api/auth/bitstore_upload',
                     {"publisher": "user", "package": "some-datapackage", "path": "some_data.csv"}),
                 # PUT data to s3
+                ('PUT', 'https://s3.fake/put_here', ''),
+                # POST authorized presigned url for README
+                ('POST', 'https://example.com/api/auth/bitstore_upload',
+                    {"publisher": "user", "package": "some-datapackage", "path": "README.md"}),
+                # PUT README to S3
                 ('PUT', 'https://s3.fake/put_here', ''),
                 # GET finalize upload
                 ('GET', 'https://example.com/api/package/user/some-datapackage/finalize', '')])
