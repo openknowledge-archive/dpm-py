@@ -73,7 +73,7 @@ def publish(ctx, username, password, server, debug):
             filestream.on_progress = bar.update
             response = requests.put(puturl, data=filestream)
 
-    readme_list = glob.glob('README.*')
+    readme_list = glob.glob('README*')
     if readme_list:
         readme_local_path = realpath(readme_list[0])
         echo('Uploading %s' % basename(readme_local_path))
@@ -93,7 +93,7 @@ def publish(ctx, username, password, server, debug):
             sys.exit(1)
 
         filestream = ChunkReader(readme_local_path)
-        
+
         if debug:
             echo('Uploading to %s' % puturl)
             echo('File size %d' % filestream.len)
