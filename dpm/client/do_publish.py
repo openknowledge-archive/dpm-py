@@ -108,7 +108,8 @@ def publish(ctx, username, password, server, debug):
 
         with progressbar(length=filestream.len, label=' ') as bar:
             filestream.on_progress = bar.update
-            response = requests.put(puturl, data=filestream)
+            response = requests.put(puturl, data=filestream, headers={
+                                    'Content-Length': '%d' % filestream.len})
 
     echo('Finalizing ... ', nl=False)
     response = request('GET',
