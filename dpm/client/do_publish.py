@@ -5,8 +5,10 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import sys
+import re
+import os
 from builtins import open
-from os.path import basename, getsize
+from os.path import basename, getsize, realpath, isfile
 
 import requests
 from requests.exceptions import ConnectionError
@@ -37,11 +39,19 @@ def publish(ctx, username, password, server, debug):
         sys.exit(1)
     secho('ok', fg='green')
 
+    accepted_readme = ['README', 'README.txt', 'README.md']
+    readme_list = [f for f in filter(isfile, os.listdir('.'))
+                   if f in accepted_readme]
+
+    if not readme_list:
+        secho('Warning: Publishing Package without README', fg='yellow')
+
     echo('Uploading datapackage.json ... ', nl=False)
     response = request('PUT',
-        '%s/api/package/%s/%s' % (server, username, dp.descriptor['name']),
-        json=dp.descriptor,
-        headers={'Authorization': 'Bearer %s' % token})
+                       '%s/api/package/%s/%s' % (server,
+                                                 username, dp.descriptor['name']),
+                       json=dp.descriptor,
+                       headers={'Authorization': 'Bearer %s' % token})
     secho('ok', fg='green')
 
     for resource in dp.resources:
@@ -49,13 +59,13 @@ def publish(ctx, username, password, server, debug):
 
         # Ask the server for s3 put url for a resource.
         response = request('POST',
-            '%s/api/auth/bitstore_upload' % (server),
-            json={
-                'publisher': username,
-                'package': dp.descriptor['name'],
-                'path': basename(resource.local_data_path)
-            },
-            headers={'Authorization': 'Bearer %s' % token})
+                           '%s/api/auth/bitstore_upload' % (server),
+                           json={
+                               'publisher': username,
+                               'package': dp.descriptor['name'],
+                               'path': basename(resource.local_data_path)
+                           },
+                           headers={'Authorization': 'Bearer %s' % token})
         puturl = response.json().get('key')
         if not puturl:
             secho('ERROR ', fg='red', nl=False)
@@ -72,11 +82,42 @@ def publish(ctx, username, password, server, debug):
             filestream.on_progress = bar.update
             response = requests.put(puturl, data=filestream)
 
+    if readme_list:
+        readme_local_path = realpath(readme_list[0])
+        echo('Uploading %s' % basename(readme_local_path))
+        # Ask the server for s3 put url for a resource.
+        response = request('POST',
+                           '%s/api/auth/bitstore_upload' % (server),
+                           json={
+                               'publisher': username,
+                               'package': dp.descriptor['name'],
+                               'path': basename(readme_local_path)
+                           },
+                           headers={'Authorization': 'Bearer %s' % token})
+        puturl = response.json().get('key')
+        if not puturl:
+            secho('ERROR ', fg='red', nl=False)
+            echo('server did not return resource put url\n')
+            sys.exit(1)
+
+        filestream = ChunkReader(readme_local_path)
+
+        if debug:
+            echo('Uploading to %s' % puturl)
+            echo('File size %d' % filestream.len)
+
+        with progressbar(length=filestream.len, label=' ') as bar:
+            filestream.on_progress = bar.update
+            response = requests.put(puturl, data=filestream, headers={
+                                    'Content-Length': '%d' % filestream.len})
+
     echo('Finalizing ... ', nl=False)
     response = request('GET',
-        '%s/api/package/%s/%s/finalize' % (server, username, dp.descriptor['name']),
-        headers={'Authorization': 'Bearer %s' % token})
+                       '%s/api/package/%s/%s/finalize' % (
+                           server, username, dp.descriptor['name']),
+                       headers={'Authorization': 'Bearer %s' % token})
     secho('ok', fg='green')
+
 
 def request(method, *args, **kwargs):
     methods = {
