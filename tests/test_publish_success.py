@@ -36,50 +36,52 @@ class PublishSuccessTest(BaseCliTestCase):
         self.valid_dp = datapackage.DataPackage({
             "name": "some-datapackage",
             "resources": [
-                { "name": "some-resource", "path": "./data/some_data.csv", }
+                {"name": "some-resource", "path": "./data/some_data.csv", }
             ]
         })
-        patch('dpm.main.client.do_publish.validate', lambda *a: self.valid_dp).start()
+        patch('dpm.main.client.do_publish.validate',
+              lambda *a: self.valid_dp).start()
 
-    @patch('glob.glob', lambda a: ['README.md'])
+    @patch('dpm.client.do_publish.filter', lambda a, b: ['README.md'])
     @patch('dpm.client.do_publish.open', mock_open())  # mock csv file open
     @patch('dpm.client.do_publish.getsize', lambda a: 5)  # mock csv file size
     def test_publish_success(self):
         # GIVEN the registry server that accepts any user
         responses.add(
-                responses.POST, 'https://example.com/api/auth/token',
-                json={'token': 'blabla'},
-                status=200)
+            responses.POST, 'https://example.com/api/auth/token',
+            json={'token': 'blabla'},
+            status=200)
         # AND registry server accepts any datapackage
         responses.add(
-                responses.PUT, 'https://example.com/api/package/user/some-datapackage',
-                json={'message': 'OK'},
-                status=200)
+            responses.PUT, 'https://example.com/api/package/user/some-datapackage',
+            json={'message': 'OK'},
+            status=200)
         # AND registry server gives bitstore upload url
         responses.add(
-                responses.POST, 'https://example.com/api/auth/bitstore_upload',
-                json={'key': 'https://s3.fake/put_here'},
-                status=200)
+            responses.POST, 'https://example.com/api/auth/bitstore_upload',
+            json={'key': 'https://s3.fake/put_here'},
+            status=200)
         # AND s3 server allows data upload
         responses.add(
-                responses.PUT, 'https://s3.fake/put_here',
-                json={'message': 'OK'},
-                status=200)
+            responses.PUT, 'https://s3.fake/put_here',
+            json={'message': 'OK'},
+            status=200)
         # AND registry server successfully finalizes upload
         responses.add(
-                responses.GET, 'https://example.com/api/package/user/some-datapackage/finalize',
-                json={'message': 'OK'},
-                status=200)
+            responses.GET, 'https://example.com/api/package/user/some-datapackage/finalize',
+            json={'message': 'OK'},
+            status=200)
 
         # WHEN `dpm publish` is invoked
         result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
         # THEN 'publish ok' should be printed to stdout
         self.assertRegexpMatches(result.output, 'publish ok')
-        #Checking README
-        self.assertIn('Uploading README', result.output)
+        # Checking README
+        self.assertIn('Uploading README.md', result.output)
         # AND 6 requests should be sent (Including README)
         self.assertEqual(
-            [(x.request.method, x.request.url, jsonify(x.request.body)) for x in responses.calls],
+            [(x.request.method, x.request.url, jsonify(x.request.body))
+             for x in responses.calls],
             [
                 # POST authorization
                 ('POST', 'https://example.com/api/auth/token',
@@ -100,6 +102,7 @@ class PublishSuccessTest(BaseCliTestCase):
                 # GET finalize upload
                 ('GET', 'https://example.com/api/package/user/some-datapackage/finalize', '')])
         # AND PUT request should contain serialized datapackage metadata
-        self.assertEqual(responses.calls[1].request.body.decode(), self.valid_dp.to_json())
+        self.assertEqual(
+            responses.calls[1].request.body.decode(), self.valid_dp.to_json())
         # AND exit code should be 0
         self.assertEqual(result.exit_code, 0)
