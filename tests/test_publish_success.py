@@ -68,7 +68,7 @@ class PublishSuccessTest(BaseCliTestCase):
             status=200)
         # AND registry server successfully finalizes upload
         responses.add(
-            responses.GET, 'https://example.com/api/package/user/some-datapackage/finalize',
+            responses.POST, 'https://example.com/api/package/user/some-datapackage/finalize',
             json={'message': 'OK'},
             status=200)
 
@@ -100,7 +100,7 @@ class PublishSuccessTest(BaseCliTestCase):
                 # PUT README to S3
                 ('PUT', 'https://s3.fake/put_here', ''),
                 # GET finalize upload
-                ('GET', 'https://example.com/api/package/user/some-datapackage/finalize', '')])
+                ('POST', 'https://example.com/api/package/user/some-datapackage/finalize', '')])
         # AND PUT request should contain serialized datapackage metadata
         self.assertEqual(
             responses.calls[1].request.body.decode(), self.valid_dp.to_json())
