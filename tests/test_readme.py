@@ -114,12 +114,12 @@ class ReadmeTest(BaseCliTestCase):
             status=200)
         # AND registry server successfully finalizes upload
         responses.add(
-            responses.GET, 'https://example.com/api/package/user/some-datapackage/finalize',
+            responses.POST, 'https://example.com/api/package/user/some-datapackage/finalize',
             json={'message': 'OK'},
             status=200)
         # WHEN `dpm publish` is invoked
         result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
-
+        self.assertRegexpMatches(result.output, 'publish ok')
         # Checking README uploading first match
         self.assertNotIn('Publishing Package without README', result.output)
         self.assertIn('Uploading README.txt', result.output)

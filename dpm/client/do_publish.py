@@ -112,7 +112,7 @@ def publish(ctx, username, password, server, debug):
                                     'Content-Length': '%d' % filestream.len})
 
     echo('Finalizing ... ', nl=False)
-    response = request('GET',
+    response = request('POST',
                        '%s/api/package/%s/%s/finalize' % (
                            server, username, dp.descriptor['name']),
                        headers={'Authorization': 'Bearer %s' % token})
