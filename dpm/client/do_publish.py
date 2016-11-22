@@ -13,6 +13,7 @@ from os.path import basename, getsize, realpath, isfile
 import requests
 from requests.exceptions import ConnectionError
 from click import echo, secho, progressbar
+from dpm.utils import md5_hash
 from .do_validate import validate
 
 
@@ -63,7 +64,8 @@ def publish(ctx, username, password, server, debug):
                            json={
                                'publisher': username,
                                'package': dp.descriptor['name'],
-                               'path': basename(resource.local_data_path)
+                               'path': basename(resource.local_data_path),
+                               'md5': md5_hash.md5_file_chunk(resource.local_data_path)
                            },
                            headers={'Authorization': 'Bearer %s' % token})
         puturl = response.json().get('key')
@@ -87,11 +89,12 @@ def publish(ctx, username, password, server, debug):
         echo('Uploading %s' % basename(readme_local_path))
         # Ask the server for s3 put url for a resource.
         response = request('POST',
-                           '%s/api/auth/bitstore_upload' % (server),
+                           '%s/api/auth/bitstore_upload' % (server, ),
                            json={
                                'publisher': username,
                                'package': dp.descriptor['name'],
-                               'path': basename(readme_local_path)
+                               'path': basename(readme_local_path),
+                               'md5': md5_hash.md5_file_chunk(readme_local_path)
                            },
                            headers={'Authorization': 'Bearer %s' % token})
         puturl = response.json().get('key')

@@ -45,6 +45,8 @@ class PublishSuccessTest(BaseCliTestCase):
     @patch('dpm.client.do_publish.filter', lambda a, b: ['README.md'])
     @patch('dpm.client.do_publish.open', mock_open())  # mock csv file open
     @patch('dpm.client.do_publish.getsize', lambda a: 5)  # mock csv file size
+    @patch('dpm.utils.md5_hash.md5_file_chunk', lambda a:
+           '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
     def test_publish_success(self):
         # GIVEN the registry server that accepts any user
         responses.add(
@@ -91,12 +93,14 @@ class PublishSuccessTest(BaseCliTestCase):
                     self.valid_dp.to_dict()),
                 # POST authorize presigned url for s3 upload
                 ('POST', 'https://example.com/api/auth/bitstore_upload',
-                    {"publisher": "user", "package": "some-datapackage", "path": "some_data.csv"}),
+                    {"publisher": "user", "package": "some-datapackage",
+                     "path": "some_data.csv", "md5": '855f938d67b52b5a7eb124320a21a139'}),
                 # PUT data to s3
                 ('PUT', 'https://s3.fake/put_here', ''),
                 # POST authorized presigned url for README
                 ('POST', 'https://example.com/api/auth/bitstore_upload',
-                    {"publisher": "user", "package": "some-datapackage", "path": "README.md"}),
+                    {"publisher": "user", "package": "some-datapackage",
+                     "path": "README.md", "md5": '855f938d67b52b5a7eb124320a21a139'}),
                 # PUT README to S3
                 ('PUT', 'https://s3.fake/put_here', ''),
                 # GET finalize upload
