@@ -48,6 +48,8 @@ def cli(ctx, configfile, debug):
     }
     ctx.default_map = {
         'publish': defaults,
+        'delete': defaults,
+        'purge': defaults,
         'configure': defaults,
     }
 
@@ -70,6 +72,34 @@ def validate():
     """
     client.validate()
     click.echo('datapackage.json is valid')
+
+
+@cli.command()
+@click.option('--username')
+@click.option('--password')
+@click.option('--server')
+@click.option('--debug', is_flag=True)
+@click.pass_context
+def purge(ctx, username, password, server, debug):
+    """
+    Purge datapackage from the registry server.
+    """
+    client.purge(ctx, username, password, server, debug)
+    click.echo('purge ok')
+
+
+@cli.command()
+@click.option('--username')
+@click.option('--password')
+@click.option('--server')
+@click.option('--debug', is_flag=True)
+@click.pass_context
+def delete(ctx, username, password, server, debug):
+    """
+    Delete datapackage from the registry server.
+    """
+    client.delete(ctx, username, password, server, debug)
+    click.echo('delete ok')
 
 
 @cli.command()
