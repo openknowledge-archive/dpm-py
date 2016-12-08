@@ -43,9 +43,9 @@ class PublishSuccessTest(BaseCliTestCase):
               lambda *a: self.valid_dp).start()
 
     @patch('dpm.client.do_publish.filter', lambda a, b: ['README.md'])
-    @patch('dpm.client.do_publish.open', mock_open())  # mock csv file open
-    @patch('dpm.client.do_publish.getsize', lambda a: 5)  # mock csv file size
-    @patch('dpm.utils.md5_hash.md5_file_chunk', lambda a:
+    @patch('dpm.utils.file.open', mock_open())  # mock csv file open
+    @patch('dpm.utils.file.getsize', lambda a: 5)  # mock csv file size
+    @patch('dpm.client.do_publish.md5_file_chunk', lambda a:
            '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
     def test_publish_success(self):
         # GIVEN the registry server that accepts any user
@@ -76,11 +76,10 @@ class PublishSuccessTest(BaseCliTestCase):
 
         # WHEN `dpm publish` is invoked
         result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
+
         # THEN 'publish ok' should be printed to stdout
         self.assertRegexpMatches(result.output, 'publish ok')
-        # Checking README
-        self.assertIn('Uploading README.md', result.output)
-        # AND 6 requests should be sent (Including README)
+        # AND 7 requests should be sent
         self.assertEqual(
             [(x.request.method, x.request.url, jsonify(x.request.body))
              for x in responses.calls],
@@ -103,10 +102,7 @@ class PublishSuccessTest(BaseCliTestCase):
                      "path": "README.md", "md5": '855f938d67b52b5a7eb124320a21a139'}),
                 # PUT README to S3
                 ('PUT', 'https://s3.fake/put_here', ''),
-                # GET finalize upload
+                # POST finalize upload
                 ('POST', 'https://example.com/api/package/user/some-datapackage/finalize', '')])
-        # AND PUT request should contain serialized datapackage metadata
-        self.assertEqual(
-            responses.calls[1].request.body.decode(), self.valid_dp.to_json())
         # AND exit code should be 0
         self.assertEqual(result.exit_code, 0)

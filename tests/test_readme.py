@@ -87,12 +87,12 @@ class ReadmeTest(BaseCliTestCase):
         # Checking README
         self.assertIn('Publishing Package without README', result.output)
 
-    @patch('dpm.client.do_publish.filter', lambda a, b: ['README.', 'README.txt',
-                                                         'README.md', 'README'])
-    @patch('dpm.client.do_publish.open', mock_open())  # mock csv file open
-    @patch('dpm.client.do_publish.getsize', lambda a: 5)  # mock csv file size
-    @patch('dpm.utils.md5_hash.md5_file_chunk',
-           lambda a: '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
+    @patch('dpm.client.do_publish.filter',
+           lambda a, b: ['README.', 'README.txt', 'README.md', 'README'])
+    @patch('dpm.utils.file.open', mock_open())  # mock csv file open
+    @patch('dpm.utils.file.getsize', lambda a: 5)  # mock csv file size
+    @patch('dpm.client.do_publish.md5_file_chunk', lambda a:
+           '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
     def test_readme_sucess_for_multiple_readme(self):
         # GIVEN the registry server that accepts any user
         responses.add(

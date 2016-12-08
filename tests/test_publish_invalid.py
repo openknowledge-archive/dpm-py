@@ -89,7 +89,7 @@ class PublishInvalidTest(BaseCliTestCase):
         # AND exit code should be 1
         self.assertEqual(result.exit_code, 1)
 
-    @patch('dpm.utils.md5_hash.md5_file_chunk',
+    @patch('dpm.client.do_publish.md5_file_chunk',
            lambda a: '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
     def test_notify_put_url_not_received(self):
         #Testing notificaion on put url
