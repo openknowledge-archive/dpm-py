@@ -15,10 +15,10 @@ from dpm.main import cli
 from .base import BaseCliTestCase, StringIO
 
 
-class PublishInvalidTest(BaseCliTestCase):
+class PublishMissingCredentialsTest(BaseCliTestCase):
     """
-    When user publishes datapackage, which is deemed invalid by server, the error message should
-    be displayed.
+    When user publishes datapackage, and the user credentials are missing in the config,
+    error should be displayed.
     """
 
     def setUp(self):
@@ -33,22 +33,16 @@ class PublishInvalidTest(BaseCliTestCase):
         patch('dpm.main.exists', lambda *a: True).start()
         patch('dpm.main.open', lambda *a: StringIO('{}')).start()
 
-    def test_publish_invalid(self):
-        # GIVEN the server that accepts any user
-        responses.add(
-                responses.POST, 'https://example.com/api/auth/token',
-                json={'token': 'blabla'},
-                status=200)
-        # AND server rejects any datapackage as invalid
-        responses.add(
-                responses.PUT, 'https://example.com/api/package/user/some-datapackage',
-                json={'message': 'invalid datapackage json'},
-                status=400)
+    def test_missing_credentials(self):
+        self._config = ConfigObj({
+        'username': 'user',
+        })
+        self.config = MagicMock(spec_set=self._config)
+        self.config.__getitem__.side_effect = self._config.__getitem__
+        self.config.__setitem__.side_effect = self._config.__setitem__
+        self.config.get.side_effect = self._config.get
+        patch('dpm.config.ConfigObj', lambda *a: self.config).start()
 
-        # WHEN `dpm publish` is invoked
+        self.runner = CliRunner()
         result = self.invoke(cli, ['publish'])
-
-        # THEN 'datapackage.json is invalid' should be printed to stdout
-        self.assertRegexpMatches(result.output, 'invalid datapackage json')
-        # AND exit code should be 1
-        self.assertEqual(result.exit_code, 1)
+        self.assertRegexpMatches(result.output, 'missing user credentials')

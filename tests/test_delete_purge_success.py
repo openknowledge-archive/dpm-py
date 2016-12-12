@@ -8,21 +8,11 @@ import builtins
 import datapackage
 import json
 import responses
+import six
 from mock import patch, mock_open
-from six import string_types
 
 from dpm.main import cli
-from .base import BaseCliTestCase
-
-
-def jsonify(data):
-    if not data:
-        return ''
-    if isinstance(data, bytes):
-        return json.loads(data.decode('utf8'))
-    if not isinstance(data, string_types):
-        return data.read(100)
-    return json.loads(data)
+from .base import BaseCliTestCase, StringIO, jsonify
 
 
 class DeletePurgeSuccessTest(BaseCliTestCase):
@@ -38,8 +28,9 @@ class DeletePurgeSuccessTest(BaseCliTestCase):
                 {"name": "some-resource", "path": "./data/some_data.csv", }
             ]
         })
-        patch('dpm.main.client.do_delete.validate',
-              lambda *a: self.valid_dp).start()
+        patch('dpm.main.datapackage', DataPackage=lambda *a: self.valid_dp).start()
+        patch('dpm.main.exists', lambda *a: True).start()
+        patch('dpm.main.open', lambda *a: StringIO('{}')).start()
 
         # AND the registry server that accepts any user
         responses.add(
