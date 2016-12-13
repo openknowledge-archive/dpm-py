@@ -36,7 +36,7 @@ TESTS_REQUIRE = [
 
 setup(
     name='dpmpy',
-    version=dpm.__version__,
+    version=read('dpm', 'VERSION'),
     description='dpmpy is a package manager for datapackages',
     long_description=read('README.md'),
     author='Atomatic',
