@@ -12,17 +12,9 @@ from mock import patch, mock_open
 from six import string_types
 
 from dpm.main import cli
-from .base import BaseCliTestCase
+from .base import BaseCliTestCase, StringIO, jsonify
 
 
-def jsonify(data):
-    if not data:
-        return ''
-    if isinstance(data, bytes):
-        return json.loads(data.decode('utf8'))
-    if not isinstance(data, string_types):
-        return data.read(100)
-    return json.loads(data)
 
 
 class PublishSuccessTest(BaseCliTestCase):
@@ -39,13 +31,14 @@ class PublishSuccessTest(BaseCliTestCase):
                 {"name": "some-resource", "path": "./data/some_data.csv", }
             ]
         })
-        patch('dpm.main.client.do_publish.validate',
-              lambda *a: self.valid_dp).start()
+        patch('dpm.main.datapackage', DataPackage=lambda *a: self.valid_dp).start()
+        patch('dpm.main.exists', lambda *a: True).start()
+        patch('dpm.main.open', lambda *a: StringIO('{}')).start()
 
-    @patch('dpm.client.do_publish.filter', lambda a, b: ['README.md'])
+    @patch('dpm.dpmclient.filter', lambda a, b: ['README.md'])
     @patch('dpm.utils.file.open', mock_open())  # mock csv file open
     @patch('dpm.utils.file.getsize', lambda a: 5)  # mock csv file size
-    @patch('dpm.client.do_publish.md5_file_chunk', lambda a:
+    @patch('dpm.dpmclient.md5_file_chunk', lambda a:
            '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
     def test_publish_success(self):
         # GIVEN the registry server that accepts any user
@@ -75,7 +68,7 @@ class PublishSuccessTest(BaseCliTestCase):
             status=200)
 
         # WHEN `dpm publish` is invoked
-        result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
+        result = self.invoke(cli, ['publish'])
 
         # THEN 'publish ok' should be printed to stdout
         self.assertRegexpMatches(result.output, 'publish ok')

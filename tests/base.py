@@ -4,6 +4,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import json
 import sys
 from unittest import TestCase
 
@@ -18,8 +19,17 @@ from mocket.mocket import Mocket
 if six.PY2:
     from cStringIO import StringIO
 else:
-    import io
+    from io import TextIOWrapper, BytesIO, StringIO
 
+
+def jsonify(data):
+    if not data:
+        return ''
+    if isinstance(data, bytes):
+        return json.loads(data.decode('utf8'))
+    if not isinstance(data, six.string_types):
+        return data.read(100)
+    return json.loads(data)
 
 
 class SimpleTestCase(TestCase):
@@ -79,7 +89,7 @@ class BaseCliTestCase(SimpleTestCase):
         self.config.__getitem__.side_effect = self._config.__getitem__
         self.config.__setitem__.side_effect = self._config.__setitem__
         self.config.get.side_effect = self._config.get
-        patch('dpm.main.ConfigObj', lambda *a: self.config).start()
+        patch('dpm.config.ConfigObj', lambda *a: self.config).start()
 
         self.runner = CliRunner()
 
@@ -108,9 +118,8 @@ class BaseCliTestCase(SimpleTestCase):
                 if six.PY2:
                     stdout = stderr = bytes_output = StringIO()
                 else:
-                    bytes_output = io.BytesIO()
-                    stdout = stderr = io.TextIOWrapper(
-                        bytes_output, encoding='utf-8')
+                    bytes_output = BytesIO()
+                    stdout = stderr = TextIOWrapper(bytes_output, encoding='utf-8')
 
                 patch('click.utils._default_text_stdout', lambda: stdout).start()
                 patch('click.utils._default_text_stderr', lambda: stderr).start()
