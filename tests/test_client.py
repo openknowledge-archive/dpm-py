@@ -16,3 +16,13 @@ class TestClient(unittest.TestCase):
             assert e.message.startswith('No Data Package found at %s' %
                     os.getcwd())
     
+    def test___init__datapackage_ok(self):
+        client = Client(dp1_path)
+        assert client.datapackage
+        assert client.datapackage.base_path.endswith(dp1_path)
+
+    def test__init__config_ok(self):
+        pass
+    
+    # TODO: test validate
+
