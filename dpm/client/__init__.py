@@ -13,10 +13,6 @@ import six
 class DpmException(Exception):
     pass
 
-class NetworkError(Exception):
-    """ There was a connection error during request. """
-    pass
-
 class AuthError(Exception):
     """ Recieved malformed response form authentication server. """
     pass
@@ -44,22 +40,24 @@ class MissingCredentialsError(Exception):
 
 class Client(object):
 
-    def __init__(self, config, data_package_path='', click=None):
+    def __init__(self, data_package_path='', config=None, click=None):
         if not data_package_path:
             data_package_path = os.getcwd()
         data_package_path = os.path.abspath(data_package_path)
         # may want to use the datapackage-py here
         self.datapackage = self._load_dp(data_package_path)
 
-        try:
-            self.server = config['server']
-            self.username = config['username']
-            self.password = config['password']
-        except KeyError as e:
-            raise ConfigError('Configuration error: %s is required' % str(e))
-
         self.click = click
         self.token = None
+        self.config = config
+
+    def _ensure_config(self):
+        try:
+            self.server = self.config['server']
+            self.username = self.config['username']
+            self.password = self.config['password']
+        except KeyError as e:
+            raise ConfigError('Configuration error: %s is required' % str(e))
 
     def _load_dp(self, path):
         dppath = os.path.join(path, 'datapackage.json')
@@ -117,6 +115,10 @@ class Client(object):
             Response -- requests.Response instance
 
         """
+
+        # TODO: doing this for every request is kinda awkward
+        self._ensure_config()
+
         methods = {
             'POST': requests.post,
             'PUT': requests.put,
