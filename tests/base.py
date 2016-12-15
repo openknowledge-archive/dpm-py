@@ -57,9 +57,8 @@ class SimpleTestCase(TestCase):
         pass
 
 
-class BaseCliTestCase(SimpleTestCase):
+class BaseTestCase(SimpleTestCase):
     mock_requests = True  # Flag if the testcase should mock out requests library.
-    isolate = False  # Flag if the test should run in isolated environment.
 
     def _pre_setup(self):
         # Use Mocket to prevent any real network access from tests
@@ -69,6 +68,24 @@ class BaseCliTestCase(SimpleTestCase):
         # Connectivity tests can use lower level mocks at socket level instead.
         if self.mock_requests:
             responses.start()
+
+    def _post_teardown(self):
+        """
+        Disable all mocks after the test.
+        """
+        if self.mock_requests:
+            responses.reset()
+            responses.stop()
+        # TODO: Mocket.disable() sometimes makes tests hang.
+        #Mocket.disable()
+        patch.stopall()
+
+
+class BaseCliTestCase(BaseTestCase):
+    isolate = False  # Flag if the test should run in isolated environment.
+
+    def _pre_setup(self):
+        super(BaseCliTestCase, self)._pre_setup()
 
         # Start with default config
         self._config = ConfigObj({
@@ -83,14 +100,6 @@ class BaseCliTestCase(SimpleTestCase):
 
         self.runner = CliRunner()
 
-    def _post_teardown(self):
-        """ Disable all mocks """
-        if self.mock_requests:
-            responses.reset()
-            responses.stop()
-        # TODO: Mocket.disable() sometimes makes tests hang.
-        #Mocket.disable()
-        patch.stopall()
 
     def invoke(self, cli, args=None, **kwargs):
         """
