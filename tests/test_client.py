@@ -1,12 +1,15 @@
 import unittest
 import os
 
+import datapackage
 import pytest
 import requests
 import responses
+
+from datapackage.exceptions import ValidationError
 from mock import patch
 
-from dpm.client import Client, DpmException, ConfigError, JSONDecodeError, HTTPStatusError
+from dpm.client import Client, DpmException, ConfigError, JSONDecodeError, HTTPStatusError, ResourceDoesNotExist
 from .base import BaseTestCase
 
 dp1_path = 'tests/fixtures/dp1'
@@ -151,5 +154,51 @@ class ClientApirequestTest(BaseClientTestCase):
         # THEN result should be Response instance
         assert isinstance(result, requests.Response)
 
-    # TODO: test validate
+
+class ClientValidateTest(BaseClientTestCase):
+    def test_validate_invalid_datapackage_schema(self):
+        # GIVEN invalid datapackage (missing resource path)
+        invalid_dp = datapackage.DataPackage({
+            "name": "some-datapackage",
+            "resources": [
+                {"name": "res"}
+            ]
+        })
+        # AND client
+        client = Client(dp1_path)
+        client.datapackage = invalid_dp
+
+        # WHEN validate() is invoked
+        try:
+            result = client.validate()
+        except Exception as e:
+            result = e
+
+        # THEN ValidationError should be raised
+        assert isinstance(result, ValidationError)
+        # AND it should say some cryptic message on invalid schema
+        assert "not valid under any of the given schemas" in str(result)
+
+    def test_validate_missing_datapackage_resource_file(self):
+        # GIVEN datapackage without resource file on disk
+        invalid_dp = datapackage.DataPackage({
+            "name": "some-datapackage",
+            "resources": [
+                {"name": "res-asd", "path": "./data/some_data.csv"}
+            ]
+        })
+        # AND client
+        client = Client(dp1_path)
+        client.datapackage = invalid_dp
+
+        # WHEN validate() is invoked
+        try:
+            result = client.validate()
+        except Exception as e:
+            result = e
+
+        # THEN ResourceDoesNotExist should be raised
+        assert isinstance(result, ResourceDoesNotExist)
+        # AND it should say that resource does not exist
+        assert "data/some_data.csv does not exist on disk" in str(result)
 

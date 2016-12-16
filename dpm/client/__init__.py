@@ -4,6 +4,7 @@ from .do_publish import publish
 from .do_validate import validate
 
 import os
+from os.path import exists
 
 import datapackage
 import requests
@@ -33,6 +34,8 @@ class HTTPStatusError(Exception):
         self.request = request
         self.message = message
 
+class ResourceDoesNotExist(Exception):
+    pass
 
 class MissingCredentialsError(Exception):
     pass
@@ -75,8 +78,9 @@ class Client(object):
         # should we really check this here? Good question i think ...
         for idx, resource in enumerate(self.datapackage.resources):
             if not exists(resource.local_data_path):
-                raise DpmException('Resource at index %s with name %s and path %s does not exist on disk' % (
-                    idx, resource.name, resource.local_data_path)
+                raise ResourceDoesNotExist(
+                    'Resource at index %s and path %s does not exist on disk' % (
+                    idx, resource.local_data_path)
                     )
 
         return True
