@@ -4,11 +4,15 @@ from .do_publish import publish
 from .do_validate import validate
 
 import os
+import os.path
 from os.path import exists
 
 import datapackage
 import requests
 import six
+
+from dpm.utils.md5_hash import md5_file_chunk
+from dpm.utils.file import ChunkReader
 
 
 class DpmException(Exception):
@@ -85,6 +89,70 @@ class Client(object):
 
         return True
 
+    def publish(self, publisher=None):
+        """
+        Publish datapackage to the registry server.
+
+        @param publisher: optional publisher to use to use. If not provided
+        first try to use publisher in datapackage.json and if that is missing
+        use username.
+        """
+        self.validate()
+        token = self._ensure_auth()
+
+        # TODO: (?) echo('Uploading datapackage.json ... ', nl=False)
+        response = self._apirequest(
+                method='PUT',
+                url='%s/api/package/%s/%s' % (self.server, self.username,
+                    self.datapackage.descriptor['name']),
+                json=self.datapackage.descriptor
+                )
+
+        for resource in self.datapackage.resources:
+            self._upload_file(resource.descriptor['path'], resource.local_data_path)
+
+        accepted_readme = ['README', 'README.txt', 'README.md']
+        readme_list = [f for f in filter(os.path.isfile,
+            os.listdir(self.datapackage.base_path))
+                       if f in accepted_readme]
+        if readme_list:
+            readme = readme_list[0]
+            readme_local_path = os.path.join(self.datapackage.base_path,
+                    readme)
+            self._upload_file(readme, readme_local_path)
+
+        # TODO: (?) echo('Finalizing ... ', nl=False)
+        response = self._apirequest(
+            method='POST',
+            url='%s/api/package/%s/%s/finalize' % (self.server, self.username, self.datapackage.descriptor['name'])
+            )
+
+    def _upload_file(self, path, local_path):
+        '''Upload a file within the data package.'''
+        # TODO: (?) echo('Uploading resource %s' % resource.local_data_path)
+
+        md5 = md5_file_chunk(local_path)
+        # Ask the server for s3 put url for a resource.
+        response = self._apirequest(
+                method='POST',
+                url='%s/api/auth/bitstore_upload' % self.server,
+                json={
+                    'publisher': self.username,
+                    'package': self.datapackage.descriptor['name'],
+                    'path': path, 
+                    'md5': md5 
+                })
+        puturl = response.json().get('key')
+        if not puturl:
+            raise DpmException('server did not provide upload authorization for path: %s' % path)
+
+        filestream = ChunkReader(local_path)
+
+        # with progressbar(length=filestream.len, label=' ') as bar:
+        #    filestream.on_progress = bar.update
+        #    response = requests.put(puturl, data=filestream)
+        response = requests.put(puturl, data=filestream)
+
     def _ensure_auth(self):
         """
         Get auth token from the server using credentials. Token can be used in future
@@ -94,11 +162,8 @@ class Client(object):
         """
         if self.token:
             return self.token
-
-        if not (self.username and self.password):
-            raise MissingCredentialsError('User credentials are missing.')
-
-        #echo('Authenticating ... ', nl=False)  # TODO: logging
+        
+        self._ensure_config()
         authresponse = self._apirequest(
                 method='POST',
                 url='%s/api/auth/token' % self.server,

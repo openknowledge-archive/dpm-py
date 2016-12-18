@@ -1,3 +1,9 @@
 {
-  "name": "abc"
+  "name": "abc",
+  "resources": [
+    {
+      "name": "some-resource",
+      "path": "data/some-data.csv"
+    }
+  ]
 }

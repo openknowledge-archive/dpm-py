@@ -7,10 +7,11 @@ import requests
 import responses
 
 from datapackage.exceptions import ValidationError
-from mock import patch
+from mock import patch, mock_open
 
 from dpm.client import Client, DpmException, ConfigError, JSONDecodeError, HTTPStatusError, ResourceDoesNotExist
 from .base import BaseTestCase
+from .base import jsonify
 
 dp1_path = 'tests/fixtures/dp1'
 
@@ -201,4 +202,80 @@ class ClientValidateTest(BaseClientTestCase):
         assert isinstance(result, ResourceDoesNotExist)
         # AND it should say that resource does not exist
         assert "data/some_data.csv does not exist on disk" in str(result)
+
+
+class ClientPublishSuccessTest(BaseClientTestCase):
+    """
+    When user publishes valid datapackage, and server accepts it, dpm should
+    report sucess.
+    """
+
+    @patch('dpm.client.do_publish.md5_file_chunk', lambda a:
+           '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
+    def test_publish_success(self):
+        # name from fixture data package
+        dp_name = 'abc'
+        username = 'user'
+        config = {
+                'username': username,
+                'server': 'https://example.com',
+                'password': 'password'
+            }
+        client = Client(dp1_path, config)
+        # GIVEN the registry server that accepts any user
+        responses.add(
+            responses.POST, 'https://example.com/api/auth/token',
+            json={'token': 'blabla'},
+            status=200)
+        # AND registry server accepts any datapackage
+        responses.add(
+            responses.PUT, 'https://example.com/api/package/%s/%s' % (username,
+                dp_name),
+            json={'message': 'OK'},
+            status=200)
+        # AND registry server gives bitstore upload url
+        responses.add(
+            responses.POST, 'https://example.com/api/auth/bitstore_upload',
+            json={'key': 'https://s3.fake/put_here'},
+            status=200)
+        # AND s3 server allows data upload
+        responses.add(
+            responses.PUT, 'https://s3.fake/put_here',
+            json={'message': 'OK'},
+            status=200)
+        # AND registry server successfully finalizes upload
+        responses.add(
+            responses.POST, 'https://example.com/api/package/%s/%s/finalize' % (username, dp_name),
+            json={'message': 'OK'},
+            status=200)
+
+        # WHEN `dpm publish` is invoked
+        result = client.publish(publisher='testpub')
+
+        # 7 requests should be sent
+        self.assertEqual(
+            [(x.request.method, x.request.url, jsonify(x.request.body))
+             for x in responses.calls],
+            [
+                # POST authorization
+                ('POST', 'https://example.com/api/auth/token',
+                    {"username": "user", "secret": "password"}),
+                # PUT metadata with datapackage.json contents
+                ('PUT', 'https://example.com/api/package/%s/%s' % (username, dp_name),
+                    client.datapackage.to_dict()),
+                # POST authorize presigned url for s3 upload
+                ('POST', 'https://example.com/api/auth/bitstore_upload',
+                    {"publisher": username, "package": dp_name,
+                     "path": "data/some-data.csv", "md5": '365bb8566485f194fac0ae108cbf22cb'}),
+                # PUT data to s3
+                ('PUT', 'https://s3.fake/put_here', 'A,B,C\n1,2,3\n'),
+                # POST authorized presigned url for README
+                ('POST', 'https://example.com/api/auth/bitstore_upload',
+                    {"publisher": username, "package": dp_name,
+                     "path": "README.md", "md5": 'd8e0da4070aaa1d3b607f71b7f4de580'}),
+                # PUT README to S3
+                ('PUT', 'https://s3.fake/put_here', 'This is a Data Package.\n'),
+                # POST finalize upload
+                ('POST', 'https://example.com/api/package/%s/%s/finalize' %
+                    (username, dp_name), '')])
 

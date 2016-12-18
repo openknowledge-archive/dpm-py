@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 
 import sys
 from unittest import TestCase
+import json
 
 import responses
 import six
@@ -20,6 +21,15 @@ if six.PY2:
 else:
     import io
 
+
+def jsonify(data):
+    if not data:
+        return ''
+    if isinstance(data, bytes):
+        return json.loads(data.decode('utf8'))
+    if not isinstance(data, six.string_types):
+        return data.read(100)
+    return json.loads(data)
 
 
 class SimpleTestCase(TestCase):
