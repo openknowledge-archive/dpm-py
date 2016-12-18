@@ -85,12 +85,11 @@ class Client(object):
 
         return True
 
-    def ensure_auth(self):
+    def _ensure_auth(self):
         """
         Get auth token from the server using credentials. Token can be used in future
         requests to the server.
 
-        # TODO: is this private or useful outside?
         # TODO: refresh expired token
         """
         if self.token:
