@@ -279,3 +279,62 @@ class ClientPublishSuccessTest(BaseClientTestCase):
                 ('POST', 'https://example.com/api/package/%s/%s/finalize' %
                     (username, dp_name), '')])
 
+
+class ClientDeletePurgeSuccessTest(BaseClientTestCase):
+    def setUp(self):
+        # GIVEN datapackage that can be treated as valid by the dpm
+        valid_dp = datapackage.DataPackage({
+            "name": "some-datapackage",
+            "resources": [
+                {"path": "./data/some_data.csv", }
+            ]
+        })
+        # AND client
+        self.client = Client(dp1_path, self.config)
+        self.client.datapackage = valid_dp
+
+        # AND the registry server that accepts any user
+        responses.add(
+            responses.POST, 'http://127.0.0.1:5000/api/auth/token',
+            json={'token': 'blabla'},
+            status=200)
+        # AND registry server accepts deletion of any datapackage
+        responses.add(
+            responses.DELETE, 'http://127.0.0.1:5000/api/package/user/some-datapackage',
+            json={'message': 'OK'},
+            status=200)
+        # AND registry server accepts purging of any datapackage
+        responses.add(
+            responses.DELETE, 'http://127.0.0.1:5000/api/package/user/some-datapackage/purge',
+            json={'message': 'OK'},
+            status=200)
+
+    def test_delete_success(self):
+        # WHEN delete() is invoked
+        self.client.delete()
+
+        # THEN 2 requests should be sent
+        self.assertEqual(
+            [(x.request.method, x.request.url, jsonify(x.request.body))
+             for x in responses.calls],
+            [
+                # POST authorization
+                ('POST', 'http://127.0.0.1:5000/api/auth/token',
+                    {"username": "user", "secret": "password"}),
+                # DELETE datapackage
+                ('DELETE', 'http://127.0.0.1:5000/api/package/user/some-datapackage', '')])
+
+    def test_purge_success(self):
+        # WHEN purge() is invoked
+        self.client.purge()
+
+        # THEN 2 requests should be sent
+        self.assertEqual(
+            [(x.request.method, x.request.url, jsonify(x.request.body))
+             for x in responses.calls],
+            [
+                # POST authorization
+                ('POST', 'http://127.0.0.1:5000/api/auth/token',
+                    {"username": "user", "secret": "password"}),
+                # DELETE datapackage
+                ('DELETE', 'http://127.0.0.1:5000/api/package/user/some-datapackage/purge', '')])
