@@ -93,7 +93,7 @@ class Client(object):
         """
         Publish datapackage to the registry server.
 
-        @param publisher: optional publisher to use to use. If not provided
+        @param publisher: optional publisher to use. If not provided
         first try to use publisher in datapackage.json and if that is missing
         use username.
         """
@@ -210,4 +210,27 @@ class Client(object):
             raise HTTPStatusError(response, message='Error %s' % response.status_code)
 
         return response
+
+    def purge(self):
+        """
+        Purge datapackage from the registry server.
+        """
+        #echo('Purging %s ... ' % dp.descriptor['name'], nl=False)  # TODO: logging
+        self._ensure_auth()
+        response = self._apirequest(
+            method='DELETE',
+            url='%s/api/package/%s/%s/purge' % (
+                self.server, self.username, self.datapackage.descriptor['name']))
+
+    def delete(self):
+        """
+        Delete datapackage from the registry server.
+        """
+        #echo('Deleting %s ... ' % dp.descriptor['name'], nl=False)  # TODO: logging
+        self._ensure_auth()
+        response = self._apirequest(
+            method='DELETE',
+            url='%s/api/package/%s/%s' % (
+                self.server, self.username, self.datapackage.descriptor['name']))
+
 
