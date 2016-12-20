@@ -19,20 +19,22 @@ class ConnectionErrorTest(BaseCliTestCase):
     mock_requests = False  # Use low-level socket mocks instead of requests lib mocks.
 
     def setUp(self):
-        # GIVEN valid datapackage
-        valid_dp = datapackage.DataPackage({
-            "name": "some-name",
-            "resources": [
-                { "name": "some-resource", "path": "./data/some_data.csv", }
-            ]
-        })
-        patch('dpm.main.client.do_publish.validate', lambda *a: valid_dp).start()
+        # GIVEN datapackage that can be treated as valid by the dpm
+        self.valid_dp = datapackage.DataPackage({
+                "name": "some-datapackage",
+                "resources": [
+                    {"name": "some-resource", "path": "./data/some_data.csv", }
+                ]
+            },
+            default_base_path='.')
+        patch('dpm.client.DataPackage', lambda *a: self.valid_dp).start()
+        patch('dpm.client.exists', lambda *a: True).start()
 
     def test_connerror_oserror(self):
         # GIVEN socket that throws OSError
         with patch("socket.socket.connect", side_effect=OSError) as mocksock:
             # WHEN dpm publish is invoked
-            result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
+            result = self.invoke(cli, ['publish', ])
 
             # THEN 'Network error' should be printed to stdout
             self.assertRegexpMatches(result.output, 'Network error')
@@ -45,7 +47,7 @@ class ConnectionErrorTest(BaseCliTestCase):
         # GIVEN socket that throws IOError
         with patch("socket.socket.connect", side_effect=IOError) as mocksock:
             # WHEN dpm publish is invoked
-            result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
+            result = self.invoke(cli, ['publish', ])
 
             # THEN 'Network error' should be printed to stdout
             self.assertRegexpMatches(result.output, 'Network error')
@@ -59,14 +61,14 @@ class ConnectionErrorTest(BaseCliTestCase):
         with patch("socket.socket.connect", side_effect=TypeError) as mocksock:
             # WHEN dpm publish is invoked
             try:
-                result = self.invoke(cli, ['publish', '--publisher', 'testpub'])
+                result = self.invoke(cli, ['publish', ])
             except Exception as e:
                 result = e
 
             # THEN TypeError should be raised
             self.assertTrue(isinstance(result, TypeError))
 
-    @patch("dpm.main.ConfigObj", lambda *a: {'server_url': 'http://127.0.0.1:1'})
+    @patch("dpm.config.ConfigObj", lambda *a: {'server_url': 'http://127.0.0.1:1'})
     @unittest.skip
     def test_connerror_wrong_url(self):
         # NOTE: Error handling currently does not distinguish various local

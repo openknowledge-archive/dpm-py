@@ -26,13 +26,13 @@ class ValidateInvalidSchemaTest(BaseCliTestCase):
                 { "name": "some-resource",}
             ]
         })
-        patch('dpm.client.os.path.exists', lambda *a: True).start()
+        patch('dpm.client.exists', lambda *a: True).start()
         patch('dpm.client.DataPackage', lambda *a: invalid_dp).start()
 
         # WHEN `dpm validate` is invoked
         result = self.invoke(cli, ['validate'])
 
-        # AND validation error should be printed to stdout
+        # THEN validation error should be printed to stdout
         self.assertRegexpMatches(result.output, 'is not valid under any of the given schemas')
-        # THEN exit code should be 1
+        # AND exit code should be 1
         self.assertEqual(result.exit_code, 1)
