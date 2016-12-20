@@ -20,7 +20,7 @@ class ValidateNonDatapackageDirTest(BaseCliTestCase):
             # WHEN `dpm validate` is invoked
             result = self.invoke(cli, ['validate'])
 
-            # THEN 'datapackage.json not found' should be printed to stdout
+            # THEN 'Did not find datapackage.json' should be printed to stdout
             self.assertRegexpMatches(result.output, 'Did not find datapackage.json')
             # AND exit code should be 1
             self.assertEqual(result.exit_code, 1)
