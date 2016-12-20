@@ -14,14 +14,17 @@ from __future__ import unicode_literals
 
 import os
 import sys
+from functools import wraps
 from os.path import exists, isfile
 
 import click
-from configobj import ConfigObj
-from .constants import DEFAULT_SERVER
-from .runtime import credsfile, configfile
+from datapackage.exceptions import ValidationError
+from requests import ConnectionError
+
+from .utils.click import echo
+from . import config
 from . import __version__
-from . import client
+from . import client as dprclient
 
 
 # Disable click warning. We are trying to be python3-compatible
@@ -29,40 +32,57 @@ from . import client
 click.disable_unicode_literals_warning = True
 
 
+def echo_errors(f):
+    """
+    Decorator for subcommands, that will echo any known errors from Client.
+    """
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except dprclient.ConfigError as e:
+            echo('[ERROR]: %s \n\n'
+                 'To enter configuration options please run:\n'
+                 '    dpmpy configure\n' % str(e))
+            sys.exit(1)
+        except (OSError, IOError, ConnectionError) as e:
+            echo('[ERROR] %s\n' % repr(e))
+            echo('Network error. Please check your connection settings\n')
+            sys.exit(1)
+        except dprclient.HTTPStatusError as e:
+            echo('[ERROR] %s\n' % str(e.message))
+            sys.exit(1)
+        except dprclient.DpmException as e:
+            echo('[ERROR] %s\n' % str(e))
+            sys.exit(1)
+
+    return wrapped
+
+
 @click.group()
 @click.version_option(version=__version__)
-@click.option('--config', 'configfile', default=configfile,
-              help='Use custom config file. Default ~/.dpm/config')
-@click.option('--debug', is_flag=True, default=False)
+@click.option('--config', 'config_path',
+              help='Use custom config file. Default %s' % config.configfile)
+@click.option('--debug', is_flag=True, default=False,
+              help='Show debug messages')
 @click.pass_context
-def cli(ctx, configfile, debug):
-    config = ConfigObj(configfile)
-    ctx.obj = config
-    defaults = {
-        'server': os.environ.get('DPM_SERVER') \
-                  or config.get('server') \
-                  or DEFAULT_SERVER,
-        'username': os.environ.get('DPM_USERNAME') or config.get('username'),
-        'password': os.environ.get('DPM_PASSWORD') or config.get('password'),
-        'debug': debug
-    }
-    ctx.default_map = {
-        'publish': defaults,
-        'delete': defaults,
-        'purge': defaults,
-        'configure': defaults,
-    }
+def cli(ctx, config_path, debug):
+    try:
+        client = dprclient.Client('.', config=config.read_config(config_path))
+    except Exception as e:
+        echo('[ERROR] %s\n' % str(e))
+        sys.exit(1)
+
+    ctx.meta['client'] = client
 
 
 @cli.command()
-@click.pass_context
-def configure(ctx, **kwargs):
+def configure():
     """
     Update configuration options. Configuration will be saved in ~/.dpm/conf or
     the file provided with --config option.
     """
-    config = ctx.obj
-    client.configure(config)
+    config.prompt_config(click.get_current_context().parent.params['config_path'])
 
 
 @cli.command()
@@ -70,51 +90,48 @@ def validate():
     """
     Validate datapackage in the current dir. Print validation errors if found.
     """
-    client.validate()
-    click.echo('datapackage.json is valid')
+    client = click.get_current_context().meta['client']
+
+    try:
+        client.validate()
+    except (ValidationError, dprclient.ResourceDoesNotExist) as e:
+        echo('[ERROR] %s\n' % str(e))
+        sys.exit(1)
+
+    echo('datapackage.json is valid\n')
 
 
 @cli.command()
-@click.option('--username')
-@click.option('--password')
-@click.option('--server')
-@click.option('--debug', is_flag=True)
-@click.pass_context
-def purge(ctx, username, password, server, debug):
+@echo_errors
+def purge():
     """
     Purge datapackage from the registry server.
     """
-    client.purge(ctx, username, password, server, debug)
-    click.echo('purge ok')
+    client = click.get_current_context().meta['client']
+    client.purge()
+    echo('purge ok')
 
 
 @cli.command()
-@click.option('--username')
-@click.option('--password')
-@click.option('--server')
-@click.option('--debug', is_flag=True)
-@click.pass_context
-def delete(ctx, username, password, server, debug):
+@echo_errors
+def delete():
     """
     Delete datapackage from the registry server.
     """
-    client.delete(ctx, username, password, server, debug)
-    click.echo('delete ok')
+    client = click.get_current_context().meta['client']
+    client.delete()
+    echo('delete ok')
 
 
 @cli.command()
-@click.option('--username')
-@click.option('--password')
-@click.option('--server')
-@click.option('--publisher')
-@click.option('--debug', is_flag=True)
-@click.pass_context
-def publish(ctx, username, password, server, publisher, debug):
+@echo_errors
+def publish():
     """
     Publish datapackage to the registry server.
     """
-    client.publish(ctx, username, password, server, debug)
-    click.echo('publish ok')
+    client = click.get_current_context().meta['client']
+    client.publish()
+    echo('publish ok')
 
 
 if __name__ == '__main__':
