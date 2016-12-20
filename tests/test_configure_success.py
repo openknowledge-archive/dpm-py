@@ -27,7 +27,7 @@ class ConfigureSuccessTest(BaseCliTestCase):
             ]
         })
         patch('dpm.client.DataPackage', lambda *a: self.valid_dp).start()
-        patch('dpm.client.os.path.exists', lambda *a: True).start()
+        patch('dpm.client.exists', lambda *a: True).start()
 
     def test_configure_success(self):
         # GIVEN valid inputs for options
