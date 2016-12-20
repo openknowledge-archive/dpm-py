@@ -216,8 +216,6 @@ class ClientPublishSuccessTest(BaseClientTestCase):
     report sucess.
     """
 
-    @patch('dpm.client.do_publish.md5_file_chunk', lambda a:
-           '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
     def test_publish_success(self):
         # name from fixture data package
         dp_name = 'abc'
