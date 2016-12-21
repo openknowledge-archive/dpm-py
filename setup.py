@@ -23,7 +23,8 @@ INSTALL_REQUIRES = [
     'datapackage',
     'requests',
     'six',
-    'future'
+    'future',
+    'gitpython'
 ]
 
 TESTS_REQUIRE = [
