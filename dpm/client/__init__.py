@@ -1,13 +1,16 @@
-from .do_configure import configure
-from .do_delete import delete, purge
-from .do_publish import publish
-from .do_validate import validate
+# -*- coding: utf-8 -*-
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import os
 import os.path
-from os.path import exists
+from os.path import exists, isfile
+from os import listdir
 
-import datapackage
+from builtins import filter
+from datapackage import DataPackage
 import requests
 import six
 
@@ -18,30 +21,27 @@ from dpm.utils.file import ChunkReader
 class DpmException(Exception):
     pass
 
-class AuthError(Exception):
+class AuthError(DpmException):
     """ Recieved malformed response form authentication server. """
     pass
 
-class ConfigError(Exception):
+class ConfigError(DpmException):
     """ The configuration passed to the client is malformed. """
     pass
 
-class JSONDecodeError(Exception):
+class JSONDecodeError(DpmException):
     """ Failed to decode responce JSON. """
     def __init__(self, request, message):
         self.request = request
         self.message = message
 
-class HTTPStatusError(Exception):
+class HTTPStatusError(DpmException):
     """ Response status_code indicated error processing the request. """
     def __init__(self, request, message):
         self.request = request
         self.message = message
 
-class ResourceDoesNotExist(Exception):
-    pass
-
-class MissingCredentialsError(Exception):
+class ResourceDoesNotExist(DpmException):
     pass
 
 
@@ -66,14 +66,19 @@ class Client(object):
         except KeyError as e:
             raise ConfigError('Configuration error: %s is required' % str(e))
 
+        for option in ('server', 'username', 'password'):
+            if not self.config.get(option):
+                raise ConfigError('Configuration error: %s is required' % option)
+
     def _load_dp(self, path):
         dppath = os.path.join(path, 'datapackage.json')
 
         # do we need to do this or is it done in datapackage library?
-        if not os.path.exists(dppath):
-            raise DpmException('No Data Package found at %s. Did not find datapackage.json at %s' % (path, dppath))
+        if not exists(dppath):
+            raise DpmException(
+                'No Data Package found at %s. Did not find datapackage.json at %s' % (path, dppath))
 
-        dp = datapackage.DataPackage(dppath)
+        dp = DataPackage(dppath)
         return dp
 
     def validate(self):
@@ -112,13 +117,12 @@ class Client(object):
             self._upload_file(resource.descriptor['path'], resource.local_data_path)
 
         accepted_readme = ['README', 'README.txt', 'README.md']
-        readme_list = [f for f in filter(os.path.isfile,
-            os.listdir(self.datapackage.base_path))
+        readme_list = [f for f in filter(isfile,
+            listdir(self.datapackage.base_path))
                        if f in accepted_readme]
         if readme_list:
             readme = readme_list[0]
-            readme_local_path = os.path.join(self.datapackage.base_path,
-                    readme)
+            readme_local_path = os.path.join(self.datapackage.base_path, readme)
             self._upload_file(readme, readme_local_path)
 
         # TODO: (?) echo('Finalizing ... ', nl=False)
@@ -201,13 +205,15 @@ class Client(object):
         response = methods.get(method)(*args, headers=headers, **kwargs)
 
         try:
-            response.json()
+            jsonresponse = response.json()
         except Exception as e:
             six.raise_from(
                 JSONDecodeError(response, message='Failed to decode JSON response from server'), e)
 
         if response.status_code not in (200, 201):
-            raise HTTPStatusError(response, message='Error %s' % response.status_code)
+            raise HTTPStatusError(response, message='Error %s\n%s' % (
+                response.status_code,
+                jsonresponse.get('message') or jsonresponse.get('description')))
 
         return response
 
@@ -232,5 +238,3 @@ class Client(object):
             method='DELETE',
             url='%s/api/package/%s/%s' % (
                 self.server, self.username, self.datapackage.descriptor['name']))
-
-

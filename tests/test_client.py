@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import unittest
 import os
 
@@ -36,7 +42,7 @@ class ClientInitTest(BaseTestCase):
         try:
             client = Client()
         except DpmException as e:
-            assert e.message.startswith('No Data Package found at %s' %
+            assert str(e).startswith('No Data Package found at %s' %
                     os.getcwd())
     
     def test___init__datapackage_ok(self):
@@ -210,8 +216,6 @@ class ClientPublishSuccessTest(BaseClientTestCase):
     report sucess.
     """
 
-    @patch('dpm.client.do_publish.md5_file_chunk', lambda a:
-           '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
     def test_publish_success(self):
         # name from fixture data package
         dp_name = 'abc'
@@ -268,13 +272,13 @@ class ClientPublishSuccessTest(BaseClientTestCase):
                     {"publisher": username, "package": dp_name,
                      "path": "data/some-data.csv", "md5": '365bb8566485f194fac0ae108cbf22cb'}),
                 # PUT data to s3
-                ('PUT', 'https://s3.fake/put_here', 'A,B,C\n1,2,3\n'),
+                ('PUT', 'https://s3.fake/put_here', b'A,B,C\n1,2,3\n'),
                 # POST authorized presigned url for README
                 ('POST', 'https://example.com/api/auth/bitstore_upload',
                     {"publisher": username, "package": dp_name,
                      "path": "README.md", "md5": 'd8e0da4070aaa1d3b607f71b7f4de580'}),
                 # PUT README to S3
-                ('PUT', 'https://s3.fake/put_here', 'This is a Data Package.\n'),
+                ('PUT', 'https://s3.fake/put_here', b'This is a Data Package.\n'),
                 # POST finalize upload
                 ('POST', 'https://example.com/api/package/%s/%s/finalize' %
                     (username, dp_name), '')])

@@ -33,13 +33,14 @@ class DeletePurgeSuccessTest(BaseCliTestCase):
     def setUp(self):
         # GIVEN datapackage that can be treated as valid by the dpm
         self.valid_dp = datapackage.DataPackage({
-            "name": "some-datapackage",
-            "resources": [
-                {"name": "some-resource", "path": "./data/some_data.csv", }
-            ]
-        })
-        patch('dpm.main.client.do_delete.validate',
-              lambda *a: self.valid_dp).start()
+                "name": "some-datapackage",
+                "resources": [
+                    {"name": "some-resource", "path": "./data/some_data.csv", }
+                ]
+            },
+            default_base_path='.')
+        patch('dpm.client.DataPackage', lambda *a: self.valid_dp).start()
+        patch('dpm.client.exists', lambda *a: True).start()
 
         # AND the registry server that accepts any user
         responses.add(

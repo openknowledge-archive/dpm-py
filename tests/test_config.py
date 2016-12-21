@@ -20,7 +20,7 @@ class TestConfig(unittest.TestCase):
         try:
             config = dpm.config.read_config(config_path)
         except Exception as e:
-            assert e.message.startswith('No config file found')
+            assert str(e).startswith('No config file found')
     
     def test_config_from_env(self):
         os.environ['DPM_USERNAME'] = 'xyz'
