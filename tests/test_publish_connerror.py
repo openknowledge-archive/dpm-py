@@ -4,8 +4,11 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import unittest
 import datapackage
+import requests
+from requests.exceptions import InvalidSchema, MissingSchema
+import six
+import unittest
 from mock import patch
 
 from dpm.main import cli
@@ -34,29 +37,54 @@ class ConnectionErrorTest(BaseCliTestCase):
         # GIVEN socket that throws OSError
         with patch("socket.socket.connect", side_effect=OSError) as mocksock:
             # WHEN dpm publish is invoked
-            result = self.invoke(cli, ['publish', ])
+            try:
+                result = self.invoke(cli, ['publish', ])
+            except Exception as e:
+                result = e
 
-            # THEN 'Network error' should be printed to stdout
-            self.assertRegexpMatches(result.output, 'Network error')
+            if six.PY2:
+                # On python2 requests does not wrap the socket errors in
+                # requests.ConnectionError. Dpm will not handle it in any way
+                # THEN OSError should be raised
+                assert isinstance(result, OSError)
+            else:
+                # python3
+                # THEN 'Network error' should be printed to stdout
+                self.assertRegexpMatches(result.output, 'Network error')
+                # AND exit code should be 1
+                self.assertEqual(result.exit_code, 1)
+
             # AND socket.connect should be called once with server address
             mocksock.assert_called_once_with(('example.com', 443))
-            # AND exit code should be 1
-            self.assertEqual(result.exit_code, 1)
 
     def test_connerror_ioerror(self):
         # GIVEN socket that throws IOError
         with patch("socket.socket.connect", side_effect=IOError) as mocksock:
             # WHEN dpm publish is invoked
-            result = self.invoke(cli, ['publish', ])
+            try:
+                result = self.invoke(cli, ['publish', ])
+            except Exception as e:
+                result = e
 
-            # THEN 'Network error' should be printed to stdout
-            self.assertRegexpMatches(result.output, 'Network error')
+            if six.PY2:
+                # On python2 requests does not wrap the socket errors in
+                # requests.ConnectionError. Dpm will not handle it in any way
+                # THEN IOError should be raised
+                assert isinstance(result, IOError)
+            else:
+                # python3
+                # THEN 'Network error' should be printed to stdout
+                self.assertRegexpMatches(result.output, 'Network error')
+                # AND exit code should be 1
+                self.assertEqual(result.exit_code, 1)
+
             # AND socket.connect should be called once with server address
             mocksock.assert_called_once_with(('example.com', 443))
-            # AND exit code should be 1
-            self.assertEqual(result.exit_code, 1)
 
     def test_connerror_typeerror(self):
+        """
+        Any unexpected error from socket should be propagated to the cli.
+        """
         # GIVEN socket that throws TypeError
         with patch("socket.socket.connect", side_effect=TypeError) as mocksock:
             # WHEN dpm publish is invoked
@@ -66,25 +94,34 @@ class ConnectionErrorTest(BaseCliTestCase):
                 result = e
 
             # THEN TypeError should be raised
-            self.assertTrue(isinstance(result, TypeError))
+            assert isinstance(result, TypeError)
 
-    @patch("dpm.config.ConfigObj", lambda *a: {'server_url': 'http://127.0.0.1:1'})
-    @unittest.skip
-    def test_connerror_wrong_url(self):
-        # NOTE: Error handling currently does not distinguish various local
-        # connectivity issues from server connection issues (host unreachable or
-        # closed port)
-        # We can provide more informative messages to user by handling this
-        # more gracefully, but there are challenges on py2/py3 compatibility
-        # side. Namely different requests/urllib3 exception handling: under py2
-        # it reraises OSError/IOError from socket unmodified, while under py3
-        # it wraps it in custom exception classes.
+    def test_connerror_invalid_url_schema(self):
+        # GIVEN server url with invalid 'htt:' schema
+        self.config['server'] = 'htt://127.0.0.1'
 
         # WHEN dpm publish is invoked
-        result = self.invoke(cli, ['publish'])
+        try:
+            result = self.invoke(cli, ['publish', ])
+        except Exception as e:
+            result = e
 
-        self.assertTrue(isinstance(result, ConnectionError))
-        # THEN exit code should be 1
-        self.assertEqual(result.exit_code, 1)
-        # AND 'Network error' should be printed to stdout
-        self.assertRegexpMatches(result.output, 'Network error')
+        # THEN InvalidSchema should be raised
+        assert isinstance(result, InvalidSchema)
+        # AND it should say that schema is invalid
+        assert "No connection adapters were found for 'htt://127.0.0.1/api/auth/token'" in str(result)
+
+    def test_connerror_missing_url_schema(self):
+        # GIVEN server url with missing schema
+        self.config['server'] = '127.0.0.1'
+
+        # WHEN dpm publish is invoked
+        try:
+            result = self.invoke(cli, ['publish', ])
+        except Exception as e:
+            result = e
+
+        # THEN MissingSchema should be raised
+        assert isinstance(result, MissingSchema)
+        # AND it should say that schema is invalid
+        assert "Invalid URL '127.0.0.1/api/auth/token': No schema supplied. Perhaps you meant http://127.0.0.1/api/auth/token?" in str(result)
