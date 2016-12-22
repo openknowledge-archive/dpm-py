@@ -397,5 +397,34 @@ class ClientUploadHttpStatusErrorTest(BaseClientTestCase):
         except Exception as e:
             result = e
 
-        # THEN OSError should be raised
+        # THEN HTTPStatusError should be raised
         assert isinstance(result, HTTPStatusError)
+
+
+class ClientUploadAuthEmptyPutUrlTest(BaseClientTestCase):
+    """
+    When auth server returns empty put url for upload, error should be raised.
+    """
+    @patch('dpm.client.md5_file_chunk', lambda a:
+        '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
+    def test_upload_auth_empty_put_url(self):
+        # GIVEN the registry server which gives empty bitstore upload url
+        responses.add(
+            responses.POST, 'http://127.0.0.1:5000/api/auth/bitstore_upload',
+            json={'asd': 'qwe'},  # 'key' missing
+            status=200)
+
+        # AND the client
+        client = Client(dp1_path, self.config)
+        client._ensure_config()
+
+        # WHEN _upload_file() is called
+        try:
+            result = client._upload_file('data.csv', '/local/data.csv')
+        except Exception as e:
+            result = e
+
+        # THEN DpmException should be raised
+        assert isinstance(result, DpmException)
+        # AND it should say that server misbehave
+        assert 'server did not provide upload authorization for path: data.csv' in str(result)
