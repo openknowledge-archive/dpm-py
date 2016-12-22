@@ -4,6 +4,11 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+#import socket
+#def guard(*args, **kwargs):
+    #raise Exception("I told you not to use the Internet!")
+#socket.socket = guard
+
 import sys
 from unittest import TestCase
 import json
@@ -13,7 +18,11 @@ import six
 from configobj import ConfigObj
 from click.testing import CliRunner, Result
 from mock import patch, MagicMock, Mock
-from mocket.mocket import Mocket
+
+from .mock_socket import patch_socket
+
+# Disable network during tests
+patch_socket()
 
 
 if six.PY2:
@@ -72,7 +81,7 @@ class BaseTestCase(SimpleTestCase):
 
     def _pre_setup(self):
         # Use Mocket to prevent any real network access from tests
-        Mocket.enable()
+        #Mocket.enable()
 
         # Mock at the level of requests library.
         # Connectivity tests can use lower level mocks at socket level instead.
@@ -86,8 +95,6 @@ class BaseTestCase(SimpleTestCase):
         if self.mock_requests:
             responses.reset()
             responses.stop()
-        # TODO: Mocket.disable() sometimes makes tests hang.
-        #Mocket.disable()
         patch.stopall()
 
 
