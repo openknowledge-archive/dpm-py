@@ -344,7 +344,6 @@ class ClientDeletePurgeSuccessTest(BaseClientTestCase):
                 ('DELETE', 'http://127.0.0.1:5000/api/package/user/some-datapackage/purge', '')])
 
                 
-                
 class ClientUploadFileReadErrorTest(BaseClientTestCase):
     """
     When read error happens on file upload, it should be raised.
@@ -365,3 +364,38 @@ class ClientUploadFileReadErrorTest(BaseClientTestCase):
 
         # THEN OSError should be raised
         assert isinstance(result, OSError)
+
+
+class ClientUploadHttpStatusErrorTest(BaseClientTestCase):
+    """
+    When bitstore returns unsuccessful http status after upload, error should be raised.
+    """
+    @patch('dpm.client.md5_file_chunk', lambda a:
+        '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
+    @patch('dpm.utils.file.open', mock_open())  # mock csv file open
+    @patch('dpm.utils.file.getsize', lambda a: 5)  # mock csv file size
+    def test_upload_httpstatus_error(self):
+        # GIVEN the registry server which gives bitstore upload url
+        responses.add(
+            responses.POST, 'http://127.0.0.1:5000/api/auth/bitstore_upload',
+            json={'key': 'https://s3.fake/put_here'},
+            status=200)
+
+        # AND s3 server that returns unsuccessful http status (403)
+        responses.add(
+            responses.PUT, 'https://s3.fake/put_here',
+            body='',
+            status=403)
+
+        # AND the client
+        client = Client(dp1_path, self.config)
+        client._ensure_config()
+
+        # WHEN _upload_file() is called
+        try:
+            result = client._upload_file('data.csv', '/local/data.csv')
+        except Exception as e:
+            result = e
+
+        # THEN OSError should be raised
+        assert isinstance(result, HTTPStatusError)

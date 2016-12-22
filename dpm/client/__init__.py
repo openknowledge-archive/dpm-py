@@ -30,7 +30,7 @@ class ConfigError(DpmException):
     pass
 
 class JSONDecodeError(DpmException):
-    """ Failed to decode responce JSON. """
+    """ Failed to decode response JSON. """
     def __init__(self, request, message):
         self.request = request
         self.message = message
@@ -156,6 +156,11 @@ class Client(object):
         #    filestream.on_progress = bar.update
         #    response = requests.put(puturl, data=filestream)
         response = requests.put(puturl, data=filestream)
+
+        if response.status_code not in (200, 201):
+            raise HTTPStatusError(
+                response,
+                message='Bitstore upload failed.\nError %s' % response.status_code)
 
     def _ensure_auth(self):
         """
