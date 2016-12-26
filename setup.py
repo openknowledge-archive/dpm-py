@@ -30,7 +30,6 @@ INSTALL_REQUIRES = [
 TESTS_REQUIRE = [
     'nose',
     'mock',
-    'mocket',
     'responses'
 ]
 

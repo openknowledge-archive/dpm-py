@@ -18,8 +18,8 @@ from functools import wraps
 from os.path import exists, isfile
 
 import click
+import requests
 from datapackage.exceptions import ValidationError
-from requests import ConnectionError
 
 from .utils.click import echo
 from . import config
@@ -45,7 +45,7 @@ def echo_errors(f):
                  'To enter configuration options please run:\n'
                  '    dpmpy configure\n' % str(e))
             sys.exit(1)
-        except (OSError, IOError, ConnectionError) as e:
+        except requests.ConnectionError as e:
             echo('[ERROR] %s\n' % repr(e))
             echo('Network error. Please check your connection settings\n')
             sys.exit(1)

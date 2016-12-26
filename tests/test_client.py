@@ -13,9 +13,9 @@ import requests
 import responses
 
 from datapackage.exceptions import ValidationError
-from mock import patch, mock_open
+from mock import patch, mock_open, MagicMock, Mock
 
-from dpm.client import Client, DpmException, ConfigError, JSONDecodeError, HTTPStatusError, ResourceDoesNotExist
+from dpm.client import Client, DpmException, ConfigError, JSONDecodeError, HTTPStatusError, ResourceDoesNotExist, AuthResponseError
 from .base import BaseTestCase
 from .base import jsonify
 
@@ -253,7 +253,7 @@ class ClientPublishSuccessTest(BaseClientTestCase):
             json={'message': 'OK'},
             status=200)
 
-        # WHEN `dpm publish` is invoked
+        # WHEN publish() is invoked
         result = client.publish(publisher='testpub')
 
         # 7 requests should be sent
@@ -282,6 +282,50 @@ class ClientPublishSuccessTest(BaseClientTestCase):
                 # POST finalize upload
                 ('POST', 'https://example.com/api/package/%s/%s/finalize' %
                     (username, dp_name), '')])
+
+
+class PublishInvalidTest(BaseClientTestCase):
+    """
+    When user publishes datapackage, which is deemed invalid by server, the error message should
+    be displayed.
+    """
+
+    def test_publish_invalid(self):
+        # GIVEN datapackage that can be treated as valid by the dpm
+        self.valid_dp = datapackage.DataPackage({
+                "name": "some-datapackage",
+                "resources": [
+                    { "name": "some-resource", "path": "./data/some_data.csv", }
+                ]
+            },
+            default_base_path='.')
+        patch('dpm.client.DataPackage', lambda *a: self.valid_dp).start()
+        patch('dpm.client.exists', lambda *a: True).start()
+
+        # AND the server that accepts any user
+        responses.add(
+                responses.POST, 'http://127.0.0.1:5000/api/auth/token',
+                json={'token': 'blabla'},
+                status=200)
+        # AND server rejects any datapackage as invalid
+        responses.add(
+                responses.PUT, 'http://127.0.0.1:5000/api/package/user/some-datapackage',
+                json={'message': 'invalid datapackage json'},
+                status=400)
+
+        # AND the client
+        client = Client(dp1_path, self.config)
+
+        # WHEN publish() is invoked
+        try:
+            result = client.publish()
+        except Exception as e:
+            result = e
+
+        # THEN HTTPStatusError should be raised
+        assert isinstance(result, HTTPStatusError)
+        # AND 'invalid datapackage json' should be printed to stdout
+        self.assertRegexpMatches(str(result), 'invalid datapackage json')
 
 
 class ClientDeletePurgeSuccessTest(BaseClientTestCase):
@@ -342,3 +386,167 @@ class ClientDeletePurgeSuccessTest(BaseClientTestCase):
                     {"username": "user", "secret": "password"}),
                 # DELETE datapackage
                 ('DELETE', 'http://127.0.0.1:5000/api/package/user/some-datapackage/purge', '')])
+
+                
+class ClientEnsureAuthEmptyTokenTest(BaseClientTestCase):
+    """
+    When registry(auth) server returns empty auth token client should raise error.
+    """
+
+    def setUp(self):
+        # GIVEN datapackage that can be treated as valid by the dpm
+        self.valid_dp = datapackage.DataPackage({
+                "name": "some-datapackage",
+                "resources": [
+                    {"name": "some-resource", "path": "./data/some_data.csv", }
+                ]
+            },
+            default_base_path='.')
+        patch('dpm.client.DataPackage', lambda *a: self.valid_dp).start()
+        patch('dpm.client.exists', lambda *a: True).start()
+
+    def test_getting_empty_auth_token(self):
+        # GIVEN registry server that returns empty token
+        responses.add(
+                responses.POST, 'http://127.0.0.1:5000/api/auth/token',
+                json={"token": ""},
+                status=200)
+
+        # AND the client
+        client = Client(dp1_path, self.config)
+
+        # WHEN _ensure_auth() is called
+        try:
+            result = client._ensure_auth()
+        except Exception as e:
+            result = e
+
+        # THEN AuthResponseError should be raised
+        assert isinstance(result, AuthResponseError)
+        # AND 'server did not return auth token' should be printed to stdout
+        self.assertRegexpMatches(str(result), 'Server did not return auth token')
+
+
+class ClientEnsureAuthSuccessTest(BaseClientTestCase):
+    """
+    When registry(auth) server returns valid auth token, client should store it.
+    """
+
+    def setUp(self):
+        # GIVEN datapackage that can be treated as valid by the dpm
+        self.valid_dp = datapackage.DataPackage({
+                "name": "some-datapackage",
+                "resources": [
+                    {"name": "some-resource", "path": "./data/some_data.csv", }
+                ]
+            },
+            default_base_path='.')
+        patch('dpm.client.DataPackage', lambda *a: self.valid_dp).start()
+        patch('dpm.client.exists', lambda *a: True).start()
+
+    def test_ensure_auth_success(self):
+        # GIVEN (auth)registry server that returns valid token
+        responses.add(
+                responses.POST, 'http://127.0.0.1:5000/api/auth/token',
+                json={"token": "12345"},
+                status=200)
+
+        # AND the client
+        client = Client(dp1_path, self.config)
+
+        # WHEN _ensure_auth() is called
+        try:
+            result = client._ensure_auth()
+        except Exception as e:
+            result = e
+
+        # THEN token should be returned in result
+        assert result == '12345'
+        # AND client should store the token
+        assert client.token == '12345'
+
+
+class ClientUploadFileReadErrorTest(BaseClientTestCase):
+    """
+    When read error happens on file upload, it should be raised.
+    """
+    def test_file_read_error(self):
+        # GIVEN the client
+        client = Client(dp1_path, self.config)
+
+        # AND the file that raises OSError on read()
+        mockopen = patch('dpm.utils.md5_hash.open', mock_open()).start()
+        mockopen.return_value.read.side_effect = OSError
+
+        # WHEN _upload_file() is called
+        try:
+            result = client._upload_file('data.csv', '/local/data.csv')
+        except Exception as e:
+            result = e
+
+        # THEN OSError should be raised
+        assert isinstance(result, OSError)
+
+
+class ClientUploadHttpStatusErrorTest(BaseClientTestCase):
+    """
+    When bitstore returns unsuccessful http status after upload, error should be raised.
+    """
+    @patch('dpm.client.md5_file_chunk', lambda a:
+        '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
+    @patch('dpm.utils.file.open', mock_open())  # mock csv file open
+    @patch('dpm.utils.file.getsize', lambda a: 5)  # mock csv file size
+    def test_upload_httpstatus_error(self):
+        # GIVEN the registry server which gives bitstore upload url
+        responses.add(
+            responses.POST, 'http://127.0.0.1:5000/api/auth/bitstore_upload',
+            json={'key': 'https://s3.fake/put_here'},
+            status=200)
+
+        # AND s3 server that returns unsuccessful http status (403)
+        responses.add(
+            responses.PUT, 'https://s3.fake/put_here',
+            body='',
+            status=403)
+
+        # AND the client
+        client = Client(dp1_path, self.config)
+        client._ensure_config()
+
+        # WHEN _upload_file() is called
+        try:
+            result = client._upload_file('data.csv', '/local/data.csv')
+        except Exception as e:
+            result = e
+
+        # THEN HTTPStatusError should be raised
+        assert isinstance(result, HTTPStatusError)
+
+
+class ClientUploadAuthEmptyPutUrlTest(BaseClientTestCase):
+    """
+    When auth server returns empty put url for upload, error should be raised.
+    """
+    @patch('dpm.client.md5_file_chunk', lambda a:
+        '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
+    def test_upload_auth_empty_put_url(self):
+        # GIVEN the registry server which gives empty bitstore upload url
+        responses.add(
+            responses.POST, 'http://127.0.0.1:5000/api/auth/bitstore_upload',
+            json={'asd': 'qwe'},  # 'key' missing
+            status=200)
+
+        # AND the client
+        client = Client(dp1_path, self.config)
+        client._ensure_config()
+
+        # WHEN _upload_file() is called
+        try:
+            result = client._upload_file('data.csv', '/local/data.csv')
+        except Exception as e:
+            result = e
+
+        # THEN DpmException should be raised
+        assert isinstance(result, DpmException)
+        # AND it should say that server misbehave
+        assert 'server did not provide upload authorization for path: data.csv' in str(result)
