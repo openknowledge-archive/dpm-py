@@ -21,31 +21,33 @@ from dpm.utils.file import ChunkReader
 class DpmException(Exception):
     pass
 
-class AuthError(DpmException):
+
+class BaseResponseError(DpmException):
+    """ Base class for errors caused by processing a response """
+    def __init__(self, response, message):
+        self.response = response
+        self.message = message
+
+    def __str__(self):
+        return self.message
+
+class AuthResponseError(BaseResponseError):
     """ Recieved malformed response form authentication server. """
     pass
+
+class JSONDecodeError(BaseResponseError):
+    """ Failed to decode response JSON. """
+    pass
+
+class HTTPStatusError(BaseResponseError):
+    """ Response status_code indicated error processing the request. """
+    pass
+
 
 class ConfigError(DpmException):
     """ The configuration passed to the client is malformed. """
     pass
 
-class JSONDecodeError(DpmException):
-    """ Failed to decode response JSON. """
-    def __init__(self, request, message):
-        self.request = request
-        self.message = message
-
-    def __str__(self):
-        return self.message
-
-class HTTPStatusError(DpmException):
-    """ Response status_code indicated error processing the request. """
-    def __init__(self, request, message):
-        self.request = request
-        self.message = message
-
-    def __str__(self):
-        return self.message
 
 class ResourceDoesNotExist(DpmException):
     pass
@@ -186,7 +188,7 @@ class Client(object):
 
         self.token = authresponse.json().get('token')
         if not self.token:
-            raise AuthError('Server did not return auth token')
+            raise AuthResponseError(authresponse, 'Server did not return auth token')
 
         return self.token
 

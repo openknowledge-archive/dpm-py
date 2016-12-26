@@ -15,7 +15,7 @@ import responses
 from datapackage.exceptions import ValidationError
 from mock import patch, mock_open, MagicMock, Mock
 
-from dpm.client import Client, DpmException, ConfigError, JSONDecodeError, HTTPStatusError, ResourceDoesNotExist
+from dpm.client import Client, DpmException, ConfigError, JSONDecodeError, HTTPStatusError, ResourceDoesNotExist, AuthResponseError
 from .base import BaseTestCase
 from .base import jsonify
 
@@ -388,6 +388,45 @@ class ClientDeletePurgeSuccessTest(BaseClientTestCase):
                 ('DELETE', 'http://127.0.0.1:5000/api/package/user/some-datapackage/purge', '')])
 
                 
+class ClientEnsureAuthEmptyTokenTest(BaseClientTestCase):
+    """
+    When registry(auth) server returns empty auth token client should raise error.
+    """
+
+    def setUp(self):
+        # GIVEN datapackage that can be treated as valid by the dpm
+        self.valid_dp = datapackage.DataPackage({
+                "name": "some-datapackage",
+                "resources": [
+                    {"name": "some-resource", "path": "./data/some_data.csv", }
+                ]
+            },
+            default_base_path='.')
+        patch('dpm.client.DataPackage', lambda *a: self.valid_dp).start()
+        patch('dpm.client.exists', lambda *a: True).start()
+
+    def test_getting_empty_auth_token(self):
+        # GIVEN registry server that returns empty token
+        responses.add(
+                responses.POST, 'http://127.0.0.1:5000/api/auth/token',
+                json={"token": ""},
+                status=200)
+
+        # AND the client
+        client = Client(dp1_path, self.config)
+
+        # WHEN _ensure_auth() is called
+        try:
+            result = client._ensure_auth()
+        except Exception as e:
+            result = e
+
+        # THEN AuthResponseError should be raised
+        assert isinstance(result, AuthResponseError)
+        # AND 'server did not return auth token' should be printed to stdout
+        self.assertRegexpMatches(str(result), 'Server did not return auth token')
+
+
 class ClientUploadFileReadErrorTest(BaseClientTestCase):
     """
     When read error happens on file upload, it should be raised.

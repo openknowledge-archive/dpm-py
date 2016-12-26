@@ -47,8 +47,7 @@ class PublishAuthServerErrorTest(BaseCliTestCase):
         # AND exit code should be 1
         self.assertEqual(result.exit_code, 1)
 
-    @patch('dpm.client.md5_file_chunk',
-           lambda a: '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
+    @patch('dpm.client.md5_file_chunk', lambda a: '855f938d6')  # mock md5 checksum
     def test_getting_empty_put_url(self):
         # GIVEN registry server that accepts any user
         responses.add(
