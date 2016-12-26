@@ -253,7 +253,7 @@ class ClientPublishSuccessTest(BaseClientTestCase):
             json={'message': 'OK'},
             status=200)
 
-        # WHEN `dpm publish` is invoked
+        # WHEN publish() is invoked
         result = client.publish(publisher='testpub')
 
         # 7 requests should be sent
@@ -282,6 +282,50 @@ class ClientPublishSuccessTest(BaseClientTestCase):
                 # POST finalize upload
                 ('POST', 'https://example.com/api/package/%s/%s/finalize' %
                     (username, dp_name), '')])
+
+
+class PublishInvalidTest(BaseClientTestCase):
+    """
+    When user publishes datapackage, which is deemed invalid by server, the error message should
+    be displayed.
+    """
+
+    def test_publish_invalid(self):
+        # GIVEN datapackage that can be treated as valid by the dpm
+        self.valid_dp = datapackage.DataPackage({
+                "name": "some-datapackage",
+                "resources": [
+                    { "name": "some-resource", "path": "./data/some_data.csv", }
+                ]
+            },
+            default_base_path='.')
+        patch('dpm.client.DataPackage', lambda *a: self.valid_dp).start()
+        patch('dpm.client.exists', lambda *a: True).start()
+
+        # AND the server that accepts any user
+        responses.add(
+                responses.POST, 'http://127.0.0.1:5000/api/auth/token',
+                json={'token': 'blabla'},
+                status=200)
+        # AND server rejects any datapackage as invalid
+        responses.add(
+                responses.PUT, 'http://127.0.0.1:5000/api/package/user/some-datapackage',
+                json={'message': 'invalid datapackage json'},
+                status=400)
+
+        # AND the client
+        client = Client(dp1_path, self.config)
+
+        # WHEN publish() is invoked
+        try:
+            result = client.publish()
+        except Exception as e:
+            result = e
+
+        # THEN HTTPStatusError should be raised
+        assert isinstance(result, HTTPStatusError)
+        # AND 'invalid datapackage json' should be printed to stdout
+        self.assertRegexpMatches(str(result), 'invalid datapackage json')
 
 
 class ClientDeletePurgeSuccessTest(BaseClientTestCase):

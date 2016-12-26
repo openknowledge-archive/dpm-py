@@ -35,11 +35,17 @@ class JSONDecodeError(DpmException):
         self.request = request
         self.message = message
 
+    def __str__(self):
+        return self.message
+
 class HTTPStatusError(DpmException):
     """ Response status_code indicated error processing the request. """
     def __init__(self, request, message):
         self.request = request
         self.message = message
+
+    def __str__(self):
+        return self.message
 
 class ResourceDoesNotExist(DpmException):
     pass

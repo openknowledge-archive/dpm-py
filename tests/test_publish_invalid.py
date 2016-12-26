@@ -49,7 +49,7 @@ class PublishInvalidTest(BaseCliTestCase):
         # WHEN `dpm publish` is invoked
         result = self.invoke(cli, ['publish'])
 
-        # THEN 'datapackage.json is invalid' should be printed to stdout
+        # THEN 'invalid datapackage json' should be printed to stdout
         self.assertRegexpMatches(result.output, 'invalid datapackage json')
         # AND exit code should be 1
         self.assertEqual(result.exit_code, 1)
