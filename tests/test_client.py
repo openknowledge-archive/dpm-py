@@ -427,6 +427,45 @@ class ClientEnsureAuthEmptyTokenTest(BaseClientTestCase):
         self.assertRegexpMatches(str(result), 'Server did not return auth token')
 
 
+class ClientEnsureAuthSuccessTest(BaseClientTestCase):
+    """
+    When registry(auth) server returns valid auth token, client should store it.
+    """
+
+    def setUp(self):
+        # GIVEN datapackage that can be treated as valid by the dpm
+        self.valid_dp = datapackage.DataPackage({
+                "name": "some-datapackage",
+                "resources": [
+                    {"name": "some-resource", "path": "./data/some_data.csv", }
+                ]
+            },
+            default_base_path='.')
+        patch('dpm.client.DataPackage', lambda *a: self.valid_dp).start()
+        patch('dpm.client.exists', lambda *a: True).start()
+
+    def test_ensure_auth_success(self):
+        # GIVEN (auth)registry server that returns valid token
+        responses.add(
+                responses.POST, 'http://127.0.0.1:5000/api/auth/token',
+                json={"token": "12345"},
+                status=200)
+
+        # AND the client
+        client = Client(dp1_path, self.config)
+
+        # WHEN _ensure_auth() is called
+        try:
+            result = client._ensure_auth()
+        except Exception as e:
+            result = e
+
+        # THEN token should be returned in result
+        assert result == '12345'
+        # AND client should store the token
+        assert client.token == '12345'
+
+
 class ClientUploadFileReadErrorTest(BaseClientTestCase):
     """
     When read error happens on file upload, it should be raised.
