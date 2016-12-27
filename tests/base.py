@@ -4,11 +4,6 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-#import socket
-#def guard(*args, **kwargs):
-    #raise Exception("I told you not to use the Internet!")
-#socket.socket = guard
-
 import sys
 from unittest import TestCase
 import json
@@ -19,10 +14,10 @@ from configobj import ConfigObj
 from click.testing import CliRunner, Result
 from mock import patch, MagicMock, Mock
 
-from .mock_socket import patch_socket
+from . import mock_socket
 
 # Disable network during tests
-patch_socket()
+mock_socket.patch_socket()
 
 
 if six.PY2:
@@ -32,11 +27,16 @@ else:
 
 
 def jsonify(data):
+    """
+    Convert response data to canonical form, used in tests for assertions.
+    """
     if not data:
         return ''
     if isinstance(data, bytes):
         return json.loads(data.decode('utf8'))
     if not isinstance(data, six.string_types):
+        # If data is not a string, it could be a file-like object returned by
+        # `responses` library. We will return first 100 bytes.
         return data.read(100)
     return json.loads(data)
 
