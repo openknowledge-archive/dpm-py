@@ -78,6 +78,10 @@ class Client(object):
             if not self.config.get(option):
                 raise ConfigError('Configuration error: %s is required' % option)
 
+        if self.server.endswith('/'):
+            # remove trailing slash
+            self.server = self.server[:-1]
+
     def _load_dp(self, path):
         dppath = os.path.join(path, 'datapackage.json')
 
@@ -116,18 +120,16 @@ class Client(object):
         # TODO: (?) echo('Uploading datapackage.json ... ', nl=False)
         response = self._apirequest(
                 method='PUT',
-                url='%s/api/package/%s/%s' % (self.server, self.username,
-                    self.datapackage.descriptor['name']),
+                url='/api/package/%s/%s' % (self.username, self.datapackage.descriptor['name']),
                 json=self.datapackage.descriptor
                 )
 
         for resource in self.datapackage.resources:
             self._upload_file(resource.descriptor['path'], resource.local_data_path)
 
+        files = filter(isfile, listdir(self.datapackage.base_path))
         accepted_readme = ['README', 'README.txt', 'README.md']
-        readme_list = [f for f in filter(isfile,
-            listdir(self.datapackage.base_path))
-                       if f in accepted_readme]
+        readme_list = [f for f in files if f in accepted_readme]
         if readme_list:
             readme = readme_list[0]
             readme_local_path = os.path.join(self.datapackage.base_path, readme)
@@ -136,8 +138,8 @@ class Client(object):
         # TODO: (?) echo('Finalizing ... ', nl=False)
         response = self._apirequest(
             method='POST',
-            url='%s/api/package/%s/%s/finalize' % (self.server, self.username, self.datapackage.descriptor['name'])
-            )
+            url='/api/package/%s/%s/finalize' % (self.username, self.datapackage.descriptor['name'])
+        )
 
     def _upload_file(self, path, local_path):
         '''Upload a file within the data package.'''
@@ -147,7 +149,7 @@ class Client(object):
         # Ask the server for s3 put url for a resource.
         response = self._apirequest(
                 method='POST',
-                url='%s/api/auth/bitstore_upload' % self.server,
+                url='/api/auth/bitstore_upload',
                 json={
                     'publisher': self.username,
                     'package': self.datapackage.descriptor['name'],
@@ -183,7 +185,7 @@ class Client(object):
         self._ensure_config()
         authresponse = self._apirequest(
                 method='POST',
-                url='%s/api/auth/token' % self.server,
+                url='/api/auth/token',
                 json={'username': self.username, 'secret': self.access_token})
 
         self.token = authresponse.json().get('token')
@@ -192,7 +194,7 @@ class Client(object):
 
         return self.token
 
-    def _apirequest(self, method, *args, **kwargs):
+    def _apirequest(self, method, url, *args, **kwargs):
         """
         General request-response processing routine for dpr-api server.
 
@@ -203,6 +205,10 @@ class Client(object):
 
         # TODO: doing this for every request is kinda awkward
         self._ensure_config()
+
+        if not url.startswith('http'):
+            # Relative url is given. Build absolute server url
+            url = self.server + url
 
         methods = {
             'POST': requests.post,
@@ -215,7 +221,7 @@ class Client(object):
         if self.token:
             headers.setdefault('Authorization', 'Bearer %s' % self.token)
 
-        response = methods.get(method)(*args, headers=headers, **kwargs)
+        response = methods.get(method)(url, *args, headers=headers, **kwargs)
 
         try:
             jsonresponse = response.json()
@@ -238,8 +244,7 @@ class Client(object):
         self._ensure_auth()
         response = self._apirequest(
             method='DELETE',
-            url='%s/api/package/%s/%s/purge' % (
-                self.server, self.username, self.datapackage.descriptor['name']))
+            url='/api/package/%s/%s/purge' % (self.username, self.datapackage.descriptor['name']))
 
     def delete(self):
         """
@@ -249,5 +254,4 @@ class Client(object):
         self._ensure_auth()
         response = self._apirequest(
             method='DELETE',
-            url='%s/api/package/%s/%s' % (
-                self.server, self.username, self.datapackage.descriptor['name']))
+            url='/api/package/%s/%s' % (self.username, self.datapackage.descriptor['name']))
