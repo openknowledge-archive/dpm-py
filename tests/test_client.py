@@ -26,7 +26,7 @@ class BaseClientTestCase(BaseTestCase):
     # Valid config for tests.
     config = {
         'username': 'user',
-        'password': 'password',
+        'access_token': 'access_token',
         'server': 'http://127.0.0.1:5000'
     }
 
@@ -52,9 +52,9 @@ class ClientInitTest(BaseTestCase):
 
 
 class ClientEnsureConfigTest(BaseTestCase):
-    def test__ensure_config_password_missing(self):
+    def test__ensure_config_access_token_missing(self):
         """
-        When the 'password' is missing in the config, the client should raise ConfigError.
+        When the 'access_token' is missing in the config, the client should raise ConfigError.
         """
         config = {'username': 'user', 'server': 'server'}
         client = Client(dp1_path, config)
@@ -65,13 +65,13 @@ class ClientEnsureConfigTest(BaseTestCase):
         try:
             client._ensure_config()
         except ConfigError as e:
-            assert "'password' is required" in str(e)
+            assert "'access_token' is required" in str(e)
 
     def test__ensure_config_username_missing(self):
         """
         When the 'username' is missing in the config, the client should raise ConfigError.
         """
-        config = {'password': 'pwd', 'server': 'server'}
+        config = {'access_token': 'pwd', 'server': 'server'}
         client = Client(dp1_path, config)
 
         with pytest.raises(ConfigError):
@@ -86,7 +86,7 @@ class ClientEnsureConfigTest(BaseTestCase):
         """
         When the 'server' is missing in the config, the client should raise ConfigError.
         """
-        config = {'username': 'user', 'password': 'pwd'}
+        config = {'username': 'user', 'access_token': 'pwd'}
         client = Client(dp1_path, config)
 
         with pytest.raises(ConfigError):
@@ -223,7 +223,7 @@ class ClientPublishSuccessTest(BaseClientTestCase):
         config = {
                 'username': username,
                 'server': 'https://example.com',
-                'password': 'password'
+                'access_token': 'access_token'
             }
         client = Client(dp1_path, config)
         # GIVEN the registry server that accepts any user
@@ -263,7 +263,7 @@ class ClientPublishSuccessTest(BaseClientTestCase):
             [
                 # POST authorization
                 ('POST', 'https://example.com/api/auth/token',
-                    {"username": "user", "secret": "password"}),
+                    {"username": "user", "secret": "access_token"}),
                 # PUT metadata with datapackage.json contents
                 ('PUT', 'https://example.com/api/package/%s/%s' % (username, dp_name),
                     client.datapackage.to_dict()),
@@ -368,7 +368,7 @@ class ClientDeletePurgeSuccessTest(BaseClientTestCase):
             [
                 # POST authorization
                 ('POST', 'http://127.0.0.1:5000/api/auth/token',
-                    {"username": "user", "secret": "password"}),
+                    {"username": "user", "secret": "access_token"}),
                 # DELETE datapackage
                 ('DELETE', 'http://127.0.0.1:5000/api/package/user/some-datapackage', '')])
 
@@ -383,7 +383,7 @@ class ClientDeletePurgeSuccessTest(BaseClientTestCase):
             [
                 # POST authorization
                 ('POST', 'http://127.0.0.1:5000/api/auth/token',
-                    {"username": "user", "secret": "password"}),
+                    {"username": "user", "secret": "access_token"}),
                 # DELETE datapackage
                 ('DELETE', 'http://127.0.0.1:5000/api/package/user/some-datapackage/purge', '')])
 

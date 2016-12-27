@@ -107,7 +107,7 @@ class BaseCliTestCase(BaseTestCase):
         # Start with default config
         self._config = ConfigObj({
             'username': 'user',
-            'password': 'password',
+            'access_token': 'access_token',
         })
         self.config = MagicMock(spec_set=self._config)
         self.config.__getitem__.side_effect = self._config.__getitem__

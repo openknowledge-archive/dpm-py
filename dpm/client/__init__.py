@@ -70,11 +70,11 @@ class Client(object):
         try:
             self.server = self.config['server']
             self.username = self.config['username']
-            self.password = self.config['password']
+            self.access_token = self.config['access_token']
         except KeyError as e:
             raise ConfigError('Configuration error: %s is required' % str(e))
 
-        for option in ('server', 'username', 'password'):
+        for option in ('server', 'username', 'access_token'):
             if not self.config.get(option):
                 raise ConfigError('Configuration error: %s is required' % option)
 
@@ -184,7 +184,7 @@ class Client(object):
         authresponse = self._apirequest(
                 method='POST',
                 url='%s/api/auth/token' % self.server,
-                json={'username': self.username, 'secret': self.password})
+                json={'username': self.username, 'secret': self.access_token})
 
         self.token = authresponse.json().get('token')
         if not self.token:

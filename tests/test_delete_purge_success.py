@@ -71,7 +71,7 @@ class DeletePurgeSuccessTest(BaseCliTestCase):
             [
                 # POST authorization
                 ('POST', 'https://example.com/api/auth/token',
-                    {"username": "user", "secret": "password"}),
+                    {"username": "user", "secret": "access_token"}),
                 # DELETE datapackage
                 ('DELETE', 'https://example.com/api/package/user/some-datapackage', '')])
         # AND exit code should be 0
@@ -90,7 +90,7 @@ class DeletePurgeSuccessTest(BaseCliTestCase):
             [
                 # POST authorization
                 ('POST', 'https://example.com/api/auth/token',
-                    {"username": "user", "secret": "password"}),
+                    {"username": "user", "secret": "access_token"}),
                 # DELETE datapackage
                 ('DELETE', 'https://example.com/api/package/user/some-datapackage/purge', '')])
         # AND exit code should be 0

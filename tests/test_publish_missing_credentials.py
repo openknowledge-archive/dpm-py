@@ -45,4 +45,4 @@ class PublishMissingCredentialsTest(BaseCliTestCase):
 
         self.runner = CliRunner()
         result = self.invoke(cli, ['publish'])
-        self.assertRegexpMatches(result.output, 'password is required')
+        self.assertRegexpMatches(result.output, 'access_token is required')

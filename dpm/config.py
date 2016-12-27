@@ -46,14 +46,14 @@ def prompt_config(config_path):
         else:
             echo('\nUsername should not be empty.')
 
-    echo('\nPlease enter your password to authenticate '
+    echo('\nPlease enter your access_token to authenticate '
           'for the datapackage registry server.')
     while True:
-        config['password'] = getpass('Your password (input hidden): ')
-        if config['password']:
+        config['access_token'] = getpass('Your access_token (input hidden): ')
+        if config['access_token']:
             break
         else:
-            echo('\nPassword should not be empty.')
+            echo('\naccess_token should not be empty.')
 
     echo('\nPlease enter registry server url. '
           'Leave blank to use default value: %s' % DEFAULT_SERVER)
@@ -80,6 +80,6 @@ def read_config(config_path=None):
                   or config.get('server') \
                   or DEFAULT_SERVER,
         'username': os.environ.get('DPM_USERNAME') or config.get('username'),
-        'password': os.environ.get('DPM_PASSWORD') or config.get('password')
+        'access_token': os.environ.get('DPM_ACCESS_TOKEN') or config.get('access_token')
     }
 

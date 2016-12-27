@@ -33,7 +33,7 @@ class ConfigureSuccessTest(BaseCliTestCase):
         # GIVEN valid inputs for options
         options = {
             'Username: ': 'user',
-            'Your password (input hidden): ': 'password',
+            'Your access_token (input hidden): ': 'access_token',
             'Server URL: ': 'http://example.com'
         }
         patch('dpm.config.input', lambda opt: options[opt]).start()

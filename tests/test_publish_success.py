@@ -77,7 +77,7 @@ class PublishSuccessTest(BaseCliTestCase):
             [
                 # POST authorization
                 ('POST', 'https://example.com/api/auth/token',
-                    {"username": "user", "secret": "password"}),
+                    {"username": "user", "secret": "access_token"}),
                 # PUT metadata with datapackage.json contents
                 ('PUT', 'https://example.com/api/package/user/some-datapackage',
                     self.valid_dp.to_dict()),
