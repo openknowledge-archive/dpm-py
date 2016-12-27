@@ -9,7 +9,7 @@ from mock import patch, MagicMock
 
 from dpm.main import cli
 from dpm.client import Client
-from .base import BaseCliTestCase
+from ..base import BaseCliTestCase
 
 
 class ValidateInvalidSchemaTest(BaseCliTestCase):

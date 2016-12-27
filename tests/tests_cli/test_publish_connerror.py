@@ -12,7 +12,7 @@ import unittest
 from mock import patch
 
 from dpm.main import cli
-from .base import BaseCliTestCase
+from ..base import BaseCliTestCase
 
 
 class ConnectionErrorTest(BaseCliTestCase):

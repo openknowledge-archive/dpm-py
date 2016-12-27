@@ -13,7 +13,7 @@ import responses
 from mock import patch, mock_open, MagicMock
 
 from dpm.main import cli
-from .base import BaseCliTestCase, StringIO
+from ..base import BaseCliTestCase, StringIO
 
 
 class ReadmeTest(BaseCliTestCase):

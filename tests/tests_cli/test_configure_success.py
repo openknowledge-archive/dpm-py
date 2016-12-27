@@ -9,7 +9,7 @@ import responses
 from mock import patch
 
 from dpm.main import cli
-from .base import BaseCliTestCase, StringIO
+from ..base import BaseCliTestCase
 
 
 class ConfigureSuccessTest(BaseCliTestCase):
