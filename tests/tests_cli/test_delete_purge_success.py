@@ -12,7 +12,7 @@ from mock import patch, mock_open
 from six import string_types
 
 from dpm.main import cli
-from .base import BaseCliTestCase
+from ..base import BaseCliTestCase
 
 
 def jsonify(data):

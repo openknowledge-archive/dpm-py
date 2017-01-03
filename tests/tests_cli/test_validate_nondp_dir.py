@@ -5,7 +5,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from dpm.main import cli
-from .base import BaseCliTestCase
+from ..base import BaseCliTestCase
 
 
 class ValidateNonDatapackageDirTest(BaseCliTestCase):

@@ -12,7 +12,7 @@ from mock import patch, MagicMock, Mock
 from click.testing import CliRunner, Result
 
 from dpm.main import cli
-from .base import BaseCliTestCase, StringIO
+from ..base import BaseCliTestCase, StringIO
 
 
 class PublishInvalidTest(BaseCliTestCase):
