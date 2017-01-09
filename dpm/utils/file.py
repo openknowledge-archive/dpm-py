@@ -18,6 +18,8 @@ class ChunkReader(object):
         with click.progressbar(length=filestream.len, label=' ') as bar:
             filestream.on_progress = bar.update
             response = requests.put(url, data=filestream)
+
+    TODO: this approach does not work with sending `files` in mutipart requests.
     """
     on_progress = None
 
