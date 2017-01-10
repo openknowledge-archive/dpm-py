@@ -78,7 +78,7 @@ class ReadmeTest(BaseCliTestCase):
 
     @patch('dpm.client.filter',
            lambda a, b: ['README.', 'README.txt', 'README.md', 'README'])
-    @patch('dpm.utils.file.open', mock_open())  # mock csv file open
+    @patch('dpm.client.open', mock_open())  # mock csv file open
     @patch('dpm.utils.file.getsize', lambda a: 5)  # mock csv file size
     @patch('dpm.client.md5_file_chunk', lambda a:
            '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
@@ -91,11 +91,11 @@ class ReadmeTest(BaseCliTestCase):
         # AND registry server gives bitstore upload url
         responses.add(
             responses.POST, 'https://example.com/api/auth/bitstore_upload',
-            json={'key': 'https://s3.fake/put_here'},
+            json={'data': {'url': 'https://s3.fake/put_here', 'fields': {}}},
             status=200)
         # AND s3 server allows data upload
         responses.add(
-            responses.PUT, 'https://s3.fake/put_here',
+            responses.POST, 'https://s3.fake/put_here',
             json={'message': 'OK'},
             status=200)
         # AND registry server successfully finalizes upload

@@ -156,21 +156,24 @@ class Client(object):
                     'path': path, 
                     'md5': md5 
                 })
-        puturl = response.json().get('key')
-        if not puturl:
+        data = response.json().get('data')
+
+        if not data:
             raise DpmException('server did not provide upload authorization for path: %s' % path)
 
-        filestream = ChunkReader(local_path)
+        # TODO: read file in chunks
+        #filestream = ChunkReader(local_path)
+        filestream = open(local_path, 'rb')
 
         # with progressbar(length=filestream.len, label=' ') as bar:
         #    filestream.on_progress = bar.update
         #    response = requests.put(puturl, data=filestream)
-        response = requests.put(puturl, data=filestream)
+        response = requests.post(data['url'], data=data['fields'], files={'file': filestream})
 
-        if response.status_code not in (200, 201):
+        if response.status_code not in (200, 201, 204):
             raise HTTPStatusError(
                 response,
-                message='Bitstore upload failed.\nError %s' % response.status_code)
+                message='Bitstore upload failed.\nError %s\n%s' % (response.status_code, response.content))
 
     def _ensure_auth(self):
         """

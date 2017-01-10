@@ -26,19 +26,28 @@ else:
     from io import TextIOWrapper, BytesIO, StringIO
 
 
-def jsonify(data):
+def jsonify(request):
     """
-    Convert response data to canonical form, used in tests for assertions.
+    Convert request body to canonical form, used in tests for assertions.
     """
-    if not data:
+    if request.headers.get('Content-Type') == 'application/json':
+        if isinstance(request.body, bytes):
+            return json.loads(request.body.decode('utf8'))
+        return json.loads(request.body)
+
+    if not request.body:
         return ''
-    if isinstance(data, bytes):
-        return json.loads(data.decode('utf8'))
-    if not isinstance(data, six.string_types):
+    if 'multipart/form-data' in request.headers.get('Content-Type', '') \
+       and request.body.startswith(b'--'):
+        # It is not easy to decode multipart body, so return nothing for now.
+        return ''
+
+    if hasattr(request.body, 'read'):
         # If data is not a string, it could be a file-like object returned by
         # `responses` library. We will return first 100 bytes.
-        return data.read(100)
-    return json.loads(data)
+        return request.body.read(100)
+    return request.body
+
 
 
 class SimpleTestCase(TestCase):

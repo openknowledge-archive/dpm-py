@@ -6,6 +6,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import hashlib
+import base64
 
 
 def md5_file_chunk(file_name, chunk_size=4096):
@@ -17,10 +18,10 @@ def md5_file_chunk(file_name, chunk_size=4096):
 
     :param chunk_size: The chunk size to the file read
     :param file_name: The path of the file
-    :return: MD5 hash of the file
+    :return: base64-encoded MD5 hash of the file
     """
     hash_md5 = hashlib.md5()
     with open(file_name, "rb") as f:
         for chunk in iter(lambda: f.read(chunk_size), b""):
             hash_md5.update(chunk)
-    return hash_md5.hexdigest()
+    return base64.b64encode(hash_md5.digest()).decode()
