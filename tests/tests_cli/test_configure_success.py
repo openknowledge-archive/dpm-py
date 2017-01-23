@@ -18,17 +18,6 @@ class ConfigureSuccessTest(BaseCliTestCase):
     configuration should be saved to disk.
     """
 
-    def setUp(self):
-        # GIVEN datapackage that can be treated as valid by the dpm
-        self.valid_dp = datapackage.DataPackage({
-            "name": "some-datapackage",
-            "resources": [
-                {"name": "some-resource", "path": "./data/some_data.csv", }
-            ]
-        })
-        patch('dpm.client.DataPackage', lambda *a: self.valid_dp).start()
-        patch('dpm.client.exists', lambda *a: True).start()
-
     def test_configure_success(self):
         # GIVEN valid inputs for options
         options = {

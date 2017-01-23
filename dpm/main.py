@@ -67,6 +67,11 @@ def echo_errors(f):
               help='Show debug messages')
 @click.pass_context
 def cli(ctx, config_path, debug):
+    if ctx.invoked_subcommand == 'configure':
+        # configure does not require Client isntance.
+        return
+
+    # Create client instance to use in subcommands.
     try:
         client = dprclient.Client('.', config=config.read_config(config_path))
     except Exception as e:
