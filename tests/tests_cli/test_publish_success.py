@@ -68,8 +68,8 @@ class PublishSuccessTest(BaseCliTestCase):
         # WHEN `dpm publish` is invoked
         result = self.invoke(cli, ['publish'])
 
-        # THEN 'publish ok' should be printed to stdout
-        self.assertRegexpMatches(result.output, 'publish ok')
+        # THEN published package url should be printed to stdout
+        self.assertRegexpMatches(result.output, 'Datapackage successfully published. It is available at https://example.com/user/some-datapackage')
         # AND 7 requests should be sent
         self.assertEqual(
             [(x.request.method, x.request.url, jsonify(x.request))

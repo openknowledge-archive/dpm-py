@@ -135,8 +135,8 @@ def publish():
     Publish datapackage to the registry server.
     """
     client = click.get_current_context().meta['client']
-    client.publish()
-    echo('publish ok')
+    puburl = client.publish()
+    echo('Datapackage successfully published. It is available at %s' % puburl)
 
 
 if __name__ == '__main__':

@@ -105,7 +105,9 @@ class ReadmeTest(BaseCliTestCase):
             status=200)
         # WHEN `dpm publish` is invoked
         result = self.invoke(cli, ['publish'])
-        self.assertRegexpMatches(result.output, 'publish ok')
+
+        # THEN published package url should be printed to stdout
+        self.assertRegexpMatches(result.output, 'Datapackage successfully published. It is available at https://example.com/user/some-datapackage')
 
         # TODO: logging
         # Checking README uploading first match

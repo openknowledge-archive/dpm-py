@@ -141,6 +141,9 @@ class Client(object):
             url='/api/package/%s/%s/finalize' % (self.username, self.datapackage.descriptor['name'])
         )
 
+        # Return published datapackage url
+        return self.server + '/%s/%s' % (self.username, self.datapackage.descriptor['name'])
+
     def _upload_file(self, path, local_path):
         '''Upload a file within the data package.'''
         # TODO: (?) echo('Uploading resource %s' % resource.local_data_path)
