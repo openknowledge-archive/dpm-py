@@ -97,6 +97,8 @@ class BaseTestCase(SimpleTestCase):
         if self.mock_requests:
             responses.start()
 
+        patch('dpm.main.DATAVALIDATE', False).start()
+
     def _post_teardown(self):
         """
         Disable all mocks after the test.

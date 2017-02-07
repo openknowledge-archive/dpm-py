@@ -21,6 +21,7 @@ INSTALL_REQUIRES = [
     'click',
     'configobj',
     'datapackage',
+    'goodtables==1.0.0a5',
     'requests',
     'six',
     'future',

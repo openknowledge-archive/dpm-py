@@ -12,13 +12,16 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import json as json_module
 import os
 import sys
 from functools import wraps
-from os.path import exists, isfile
+from os.path import exists, isfile, abspath
 
 import click
+import goodtables
 import requests
+from datapackage import DataPackage
 from datapackage.exceptions import ValidationError
 
 from .utils.click import echo
@@ -59,6 +62,8 @@ def echo_errors(f):
     return wrapped
 
 
+DATAVALIDATE = True
+
 @click.group()
 @click.version_option(version=__version__)
 @click.option('--config', 'config_path',
@@ -67,13 +72,16 @@ def echo_errors(f):
               help='Show debug messages')
 @click.pass_context
 def cli(ctx, config_path, debug):
-    if ctx.invoked_subcommand == 'configure':
-        # configure does not require Client isntance.
+    if ctx.invoked_subcommand in ('configure', 'datavalidate'):
+        # subcommand does not require Client isntance.
         return
 
     # Create client instance to use in subcommands.
     try:
-        client = dprclient.Client('.', config=config.read_config(config_path))
+        client = dprclient.Client(
+            '.',
+            config=config.read_config(config_path),
+            datavalidate=DATAVALIDATE)
     except Exception as e:
         echo('[ERROR] %s\n' % str(e))
         sys.exit(1)
@@ -137,6 +145,50 @@ def publish():
     client = click.get_current_context().meta['client']
     puburl = client.publish()
     echo('Datapackage successfully published. It is available at %s' % puburl)
+
+
+@cli.command()
+@click.option('--json', 'print_json', is_flag=True, default=False,
+              help='Print raw json report instead of human-readable.')
+@click.argument('filepath', type=click.Path(exists=True), required=False)
+def datavalidate(filepath, print_json):
+    """
+    Validate csv file data, given its path. Print validation report. If the file is
+    a resource of the datapackage in current dir, will use datapackage.json schema for
+    validation; otherwise infer the schema automatically.
+    If no file path is given, validate all resources data in datapackage.json.
+    """
+    inspector = goodtables.Inspector(infer_schema=True)
+
+    if exists('datapackage.json'):
+        dp = DataPackage('datapackage.json')
+    else:
+        dp = None
+
+    if not filepath and not dp:
+        echo('[ERROR] please provide csv file path or run command inside a datapackage dir.')
+        sys.exit(1)
+
+    if filepath:
+        schema = None
+        if dp:
+            # Try to find schema in the datapackage.json
+            for resource in dp.resources:
+                if resource.local_data_path == abspath(filepath):
+                    #import ipdb; ipdb.sset_trace()
+                    schema = resource.descriptor.get('schema')
+                    break
+
+        report = inspector.inspect(filepath, schema=schema)
+    else:
+        # Validate whole datapackage
+        dprclient.validate_metadata(dp)
+        report = dprclient.validate_data(dp)
+
+    dprclient.print_inspection_report(report, print_json)
+    if not report['valid']:
+        sys.exit(1)
+
 
 
 if __name__ == '__main__':
