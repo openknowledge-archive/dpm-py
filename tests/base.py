@@ -97,6 +97,8 @@ class BaseTestCase(SimpleTestCase):
         if self.mock_requests:
             responses.start()
 
+        patch('dpm.main.DATAVALIDATE', False).start()
+
     def _post_teardown(self):
         """
         Disable all mocks after the test.
@@ -125,6 +127,12 @@ class BaseCliTestCase(BaseTestCase):
         patch('dpm.config.ConfigObj', lambda *a: self.config).start()
 
         self.runner = CliRunner()
+        self.isolated_fs = self.runner.isolated_filesystem()
+        self.isolated_fs.__enter__()
+
+    def _post_teardown(self):
+        super(BaseCliTestCase, self)._post_teardown()
+        self.isolated_fs.__exit__(type=None, value=None, traceback=None)
 
 
     def invoke(self, cli, args=None, **kwargs):
@@ -136,28 +144,27 @@ class BaseCliTestCase(BaseTestCase):
         place of sys.stdin and sys.stdout
         """
         kwargs.setdefault('catch_exceptions', False)
-        with self.runner.isolated_filesystem():
-            if self.isolate:
-                result = self.runner.invoke(cli, args, **kwargs)
+        if self.isolate:
+            result = self.runner.invoke(cli, args, **kwargs)
+        else:
+            if six.PY2:
+                stdout = stderr = bytes_output = StringIO()
             else:
-                if six.PY2:
-                    stdout = stderr = bytes_output = StringIO()
-                else:
-                    bytes_output = BytesIO()
-                    stdout = stderr = TextIOWrapper(bytes_output, encoding='utf-8')
+                bytes_output = BytesIO()
+                stdout = stderr = TextIOWrapper(bytes_output, encoding='utf-8')
 
-                patch('click.utils._default_text_stdout', lambda: stdout).start()
-                patch('click.utils._default_text_stderr', lambda: stderr).start()
-                exit_code = 0
-                exception = None
-                exc_info = None
-                try:
-                    cli.main(args=args, prog_name=cli.name or 'root')
-                except SystemExit as e:
-                    exit_code = e.code
-                result = Result(runner=self.runner,
-                                output_bytes=bytes_output.getvalue(),
-                                exit_code=exit_code,
-                                exception=exception,
-                                exc_info=exc_info)
+            patch('click.utils._default_text_stdout', lambda: stdout).start()
+            patch('click.utils._default_text_stderr', lambda: stderr).start()
+            exit_code = 0
+            exception = None
+            exc_info = None
+            try:
+                cli.main(args=args, prog_name=cli.name or 'root')
+            except SystemExit as e:
+                exit_code = e.code
+            result = Result(runner=self.runner,
+                            output_bytes=bytes_output.getvalue(),
+                            exit_code=exit_code,
+                            exception=exception,
+                            exc_info=exc_info)
         return result

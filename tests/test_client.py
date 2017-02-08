@@ -166,11 +166,12 @@ class ClientValidateTest(BaseClientTestCase):
     def test_validate_invalid_datapackage_schema(self):
         # GIVEN invalid datapackage (missing resource path)
         invalid_dp = datapackage.DataPackage({
-            "name": "some-datapackage",
-            "resources": [
-                {"name": "res"}
-            ]
-        })
+                "name": "some-datapackage",
+                "resources": [
+                    {"name": "res"}
+                ]
+            },
+            default_base_path='.')
         # AND client
         client = Client(dp1_path)
         client.datapackage = invalid_dp

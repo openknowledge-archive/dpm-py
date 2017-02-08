@@ -4,18 +4,21 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import json as json_module
 import os
 import os.path
-from os.path import exists, isfile
+from os.path import exists, isfile, join
 from os import listdir
 
 from builtins import filter
 from datapackage import DataPackage
+import goodtables
 import requests
 import six
 
 from dpm.utils.md5_hash import md5_file_chunk
 from dpm.utils.file import ChunkReader
+from dpm.utils.click import echo
 
 
 class DpmException(Exception):
@@ -53,9 +56,13 @@ class ResourceDoesNotExist(DpmException):
     pass
 
 
+class DataValidationError(DpmException):
+    pass
+
+
 class Client(object):
 
-    def __init__(self, data_package_path='', config=None, click=None):
+    def __init__(self, data_package_path='', config=None, click=None, datavalidate=False):
         if not data_package_path:
             data_package_path = os.getcwd()
         data_package_path = os.path.abspath(data_package_path)
@@ -65,6 +72,7 @@ class Client(object):
         self.click = click
         self.token = None
         self.config = config
+        self.datavalidate = datavalidate
 
     def _ensure_config(self):
         try:
@@ -83,7 +91,7 @@ class Client(object):
             self.server = self.server[:-1]
 
     def _load_dp(self, path):
-        dppath = os.path.join(path, 'datapackage.json')
+        dppath = join(path, 'datapackage.json')
 
         # do we need to do this or is it done in datapackage library?
         if not exists(dppath):
@@ -94,16 +102,13 @@ class Client(object):
         return dp
 
     def validate(self):
-        self.datapackage.validate()
+        validate_metadata(self.datapackage)
 
-        # should we really check this here? Good question i think ...
-        for idx, resource in enumerate(self.datapackage.resources):
-            if not exists(resource.local_data_path):
-                raise ResourceDoesNotExist(
-                    'Resource at index %s and path %s does not exist on disk' % (
-                    idx, resource.local_data_path)
-                    )
-
+        if self.datavalidate:
+            report = validate_data(self.datapackage)
+            if not report['valid']:
+                print_inspection_report(report)
+                raise DataValidationError('[ERROR] data validation failed!')
         return True
 
     def publish(self, publisher=None):
@@ -132,7 +137,7 @@ class Client(object):
         readme_list = [f for f in files if f in accepted_readme]
         if readme_list:
             readme = readme_list[0]
-            readme_local_path = os.path.join(self.datapackage.base_path, readme)
+            readme_local_path = join(self.datapackage.base_path, readme)
             self._upload_file(readme, readme_local_path)
 
         # TODO: (?) echo('Finalizing ... ', nl=False)
@@ -261,3 +266,64 @@ class Client(object):
         response = self._apirequest(
             method='DELETE',
             url='/api/package/%s/%s' % (self.username, self.datapackage.descriptor['name']))
+
+
+def validate_metadata(datapackage):
+    datapackage.validate()
+
+    # should we really check this here? Good question i think ...
+    for idx, resource in enumerate(datapackage.resources):
+        if not exists(resource.local_data_path):
+            raise ResourceDoesNotExist(
+                    'Resource at index %s and path %s does not exist on disk' % (
+                    idx, resource.local_data_path)
+                )
+
+    return True
+
+
+def validate_data(datapackage):
+    inspector = goodtables.Inspector()
+    return inspector.inspect(datapackage.descriptor, preset='datapackage')
+
+
+def print_inspection_report(report, print_json=False):
+    """
+    Taken from https://github.com/frictionlessdata/goodtables-py/blob/master/goodtables/cli.py
+
+    Print human-readable report from goodtables json report.
+    """
+    if print_json:
+        return echo(json_module.dumps(report, indent=4))
+    color = 'green' if report['valid'] else 'red'
+    tables = report.pop('tables')
+    errors = report.pop('errors')
+
+    # TODO: time varies in tests, maybe we can omit it for simplicity
+    # https://github.com/frictionlessdata/goodtables-py/issues/169
+    #report.pop('time')
+
+    echo('DATASET', bold=True)
+    echo('=======', bold=True)
+    echo(json_module.dumps(report), fg=color, bold=True)
+
+    if errors:
+        echo('---------', bold=True)
+    for error in errors:
+        error = {key: value or '-' for key, value in error.items()}
+        echo('[{row-number},{column-number}] [{code}] {message}'.format(**error))
+    for table_number, table in enumerate(tables, start=1):
+        echo('\nTABLE [%s]' % table_number, bold=True)
+        echo('=========', bold=True)
+        color = 'green' if table['valid'] else 'red'
+        errors = table.pop('errors')
+
+        # TODO: time varies in tests, maybe we can omit it for simplicity
+        #table.pop('time')
+
+        echo(json_module.dumps(table, indent=4), fg=color, bold=True)
+        if errors:
+            echo('---------', bold=True)
+        for error in errors:
+            error = {key: value or '-' for key, value in error.items()}
+            echo('[{row-number},{column-number}] [{code}] {message}'.format(**error))
