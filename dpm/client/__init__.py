@@ -267,6 +267,16 @@ class Client(object):
             method='DELETE',
             url='/api/package/%s/%s' % (self.username, self.datapackage.descriptor['name']))
 
+    def undelete(self):
+        """
+        Undelete datapackage from the registry server.
+        """
+        #echo('Undeleting %s ... ' % dp.descriptor['name'], nl=False)  # TODO: logging
+        self._ensure_auth()
+        response = self._apirequest(
+            method='POST',
+            url='/api/package/%s/%s/undelete' % (self.username, self.datapackage.descriptor['name']))
+
 
 def validate_metadata(datapackage):
     datapackage.validate()

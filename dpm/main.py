@@ -138,6 +138,17 @@ def delete():
 
 @cli.command()
 @echo_errors
+def undelete():
+    """
+    Undelete datapackage from the registry server.
+    """
+    client = click.get_current_context().meta['client']
+    client.undelete()
+    echo('undelete ok')
+
+
+@cli.command()
+@echo_errors
 def publish():
     """
     Publish datapackage to the registry server.
