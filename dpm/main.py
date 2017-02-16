@@ -159,6 +159,19 @@ def publish():
 
 
 @cli.command()
+@click.argument('tag_string', required=True)
+def tag(tag_string):
+    """
+    Tag datapackage on the server. Create new copy of the latest version of the
+    datapackage on the server, and assign a tag.
+    """
+    client = click.get_current_context().meta['client']
+    puburl = client.tag(tag_string)
+    echo('Datapackage successfully tagged.')
+
+
+
+@cli.command()
 @click.option('--json', 'print_json', is_flag=True, default=False,
               help='Print raw json report instead of human-readable.')
 @click.argument('filepath', type=click.Path(exists=True), required=False)

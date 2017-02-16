@@ -247,6 +247,16 @@ class Client(object):
 
         return response
 
+    def tag(self, tag_string):
+        """
+        Tag datapackage on the registry server.
+        """
+        self._ensure_auth()
+        response = self._apirequest(
+            method='POST',
+            url='/api/package/%s/%s/tag' % (self.username, self.datapackage.descriptor['name']),
+            json={'version': tag_string})
+
     def purge(self):
         """
         Purge datapackage from the registry server.
