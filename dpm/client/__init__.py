@@ -272,7 +272,7 @@ class Client(object):
 
         headers = kwargs.pop('headers', {})
         if self.token:
-            headers.setdefault('Authorization', 'Bearer %s' % self.token)
+            headers.setdefault('Auth-Token', '%s' % self.token)
 
         response = methods.get(method)(url, *args, headers=headers, **kwargs)
 
