@@ -119,10 +119,9 @@ class PublishSuccessTest(BaseCliTestCase):
                      }
                  }),
                 # POST data to s3
-                ('POST', 'https://s3.fake/put_here_resource', ''),
                 ('POST', 'https://s3.fake/put_here_datapackege', ''),
                 ('POST', 'https://s3.fake/put_here_readme', ''),
-
+                ('POST', 'https://s3.fake/put_here_resource', ''),
                 # POST finalize upload
                 ('POST', 'https://example.com/api/package/user/some-datapackage/finalize', '')])
         # AND exit code should be 0

@@ -211,7 +211,6 @@ class ClientValidateTest(BaseClientTestCase):
         assert "data/some_data.csv does not exist on disk" in str(result)
 
 
-@unittest.skip("INVALID NO VALIDATION CHECK FOR datapackage.json")
 class ClientPublishSuccessTest(BaseClientTestCase):
     """
     When user publishes valid datapackage, and server accepts it, dpm should
@@ -233,20 +232,31 @@ class ClientPublishSuccessTest(BaseClientTestCase):
             responses.POST, 'https://example.com/api/auth/token',
             json={'token': 'blabla'},
             status=200)
-        # AND registry server accepts any datapackage
-        responses.add(
-            responses.PUT, 'https://example.com/api/package/%s/%s' % (username,
-                dp_name),
-            json={'message': 'OK'},
-            status=200)
+
         # AND registry server gives bitstore upload url
         responses.add(
-            responses.POST, 'https://example.com/api/auth/bitstore_upload',
-            json={'data': {'url': 'https://s3.fake/put_here', 'fields': {}}},
+            responses.POST, 'https://example.com/api/datastore/authorize',
+            json={
+                'filedata': {
+                    'datapackage.json': {'upload_url': 'https://s3.fake/put_here_datapackege', 'upload_query': {}},
+                    'README.md': {'upload_url': 'https://s3.fake/put_here_readme', 'upload_query': {}},
+                    'data/some-data.csv': {'upload_url': 'https://s3.fake/put_here_resource', 'upload_query': {}}
+                }
+            },
             status=200)
-        # AND s3 server allows data upload
+        # AND s3 server allows data upload for datapackage
         responses.add(
-            responses.POST, 'https://s3.fake/put_here',
+            responses.POST, 'https://s3.fake/put_here_datapackege',
+            json={'message': 'OK'},
+            status=200)
+        # AND s3 server allows data upload for readme
+        responses.add(
+            responses.POST, 'https://s3.fake/put_here_readme',
+            json={'message': 'OK'},
+            status=200)
+        # AND s3 server allows data upload for resource
+        responses.add(
+            responses.POST, 'https://s3.fake/put_here_resource',
             json={'message': 'OK'},
             status=200)
         # AND registry server successfully finalizes upload
@@ -258,7 +268,7 @@ class ClientPublishSuccessTest(BaseClientTestCase):
         # WHEN publish() is invoked
         result = client.publish(publisher='testpub')
 
-        # 7 requests should be sent
+        # 6 requests should be sent
         self.assertEqual(
             [(x.request.method, x.request.url, jsonify(x.request))
              for x in responses.calls],
@@ -266,21 +276,35 @@ class ClientPublishSuccessTest(BaseClientTestCase):
                 # POST authorization
                 ('POST', 'https://example.com/api/auth/token',
                     {"username": "user", "secret": "access_token"}),
-                # PUT metadata with datapackage.json contents
-                ('PUT', 'https://example.com/api/package/%s/%s' % (username, dp_name),
-                    client.datapackage.to_dict()),
                 # POST authorize presigned url for s3 upload
-                ('POST', 'https://example.com/api/auth/bitstore_upload',
-                    {"publisher": username, "package": dp_name,
-                     "path": "data/some-data.csv", "md5": 'Nlu4VmSF8ZT6wK4QjL8iyw=='}),
+                ('POST', 'https://example.com/api/datastore/authorize',
+                 {
+                     'metadata': {
+                         'owner': 'user',
+                         'name': 'abc'
+                     },
+                     'filedata': {
+                         "README.md": {
+                             "md5": '2ODaQHCqodO2B/cbf03lgA==',
+                             "size": 24,
+                             "type": None
+                         },
+                         "datapackage.json": {
+                             "md5": 'mDmEykSS++mJF3SaWW56kw==',
+                             "size": 120,
+                             "type": None
+                         },
+                         "data/some-data.csv": {
+                             "md5": 'Nlu4VmSF8ZT6wK4QjL8iyw==',
+                             "size": 12,
+                             "type": None
+                         }
+                     }
+                 }),
                 # POST data to s3
-                ('POST', 'https://s3.fake/put_here', ''),
-                # POST authorized presigned url for README
-                ('POST', 'https://example.com/api/auth/bitstore_upload',
-                    {"publisher": username, "package": dp_name,
-                     "path": "README.md", "md5": '2ODaQHCqodO2B/cbf03lgA=='}),
-                # POST README to S3
-                ('POST', 'https://s3.fake/put_here', ''),
+                ('POST', 'https://s3.fake/put_here_datapackege', ''),
+                ('POST', 'https://s3.fake/put_here_readme', ''),
+                ('POST', 'https://s3.fake/put_here_resource', ''),
                 # POST finalize upload
                 ('POST', 'https://example.com/api/package/%s/%s/finalize' %
                     (username, dp_name), '')])
@@ -488,67 +512,3 @@ class ClientUploadFileReadErrorTest(BaseClientTestCase):
 
         # THEN OSError should be raised
         assert isinstance(result, OSError)
-
-
-class ClientUploadHttpStatusErrorTest(BaseClientTestCase):
-    """
-    When bitstore returns unsuccessful http status after upload, error should be raised.
-    """
-    @patch('dpm.client.md5_file_chunk', lambda a:
-        '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
-    @patch('dpm.client.open', mock_open())  # mock csv file open
-    @patch('dpm.utils.file.getsize', lambda a: 5)  # mock csv file size
-    def test_upload_httpstatus_error(self):
-        # GIVEN the registry server which gives bitstore upload url
-        responses.add(
-            responses.POST, 'http://127.0.0.1:5000/api/auth/bitstore_upload',
-            json={'data': {'url': 'https://s3.fake/put_here', 'fields': {}}},
-            status=200)
-
-        # AND s3 server that returns unsuccessful http status (403)
-        responses.add(
-            responses.POST, 'https://s3.fake/put_here',
-            body='',
-            status=403)
-
-        # AND the client
-        client = Client(dp1_path, self.config)
-        client._ensure_config()
-
-        # WHEN _upload_file() is called
-        try:
-            result = client._upload_file('data.csv', '/local/data.csv')
-        except Exception as e:
-            result = e
-
-        # THEN HTTPStatusError should be raised
-        assert isinstance(result, HTTPStatusError)
-
-
-class ClientUploadAuthEmptyPutUrlTest(BaseClientTestCase):
-    """
-    When auth server returns empty put url for upload, error should be raised.
-    """
-    @patch('dpm.client.md5_file_chunk', lambda a:
-        '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
-    def test_upload_auth_empty_put_url(self):
-        # GIVEN the registry server which gives empty bitstore upload url
-        responses.add(
-            responses.POST, 'http://127.0.0.1:5000/api/auth/bitstore_upload',
-            json={'asd': 'qwe'},  # 'key' missing
-            status=200)
-
-        # AND the client
-        client = Client(dp1_path, self.config)
-        client._ensure_config()
-
-        # WHEN _upload_file() is called
-        try:
-            result = client._upload_file('data.csv', '/local/data.csv')
-        except Exception as e:
-            result = e
-
-        # THEN DpmException should be raised
-        assert isinstance(result, DpmException)
-        # AND it should say that server misbehave
-        assert 'server did not provide upload authorization for path: data.csv' in str(result)

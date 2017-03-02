@@ -131,18 +131,21 @@ class Client(object):
         filedata = response.json().get('filedata')
         if not filedata:
             raise DpmException('server did not provide upload authorization for files')
-        for item in sorted(filedata.keys()):
-            local_path = join(self.datapackage.base_path, item)
-            filestream = open(local_path, 'rb')
-            data = filedata[item]
-            response = requests.post(data['upload_url'],
-                                     data=data['upload_query'],
-                                     files={'file': filestream})
 
-            if response.status_code not in (200, 201, 204):
-                raise HTTPStatusError(
-                    response,
-                    message='Bitstore upload failed.\nError %s\n%s' % (response.status_code, response.content))
+        # Upload datapackage.json
+        self._upload_file('datapackage.json', filedata)
+        del filedata['datapackage.json']
+
+        # Upload readme
+        accepted_readme = ['README', 'README.txt', 'README.md']
+        readme_list = [f for f in filedata.keys() if f in accepted_readme]
+        if readme_list:
+            readme = readme_list[0]
+            self._upload_file(readme, filedata)
+            del filedata[readme]
+
+        for item in filedata.keys():
+            self._upload_file(item, filedata)
 
 
         # TODO: (?) echo('Finalizing ... ', nl=False)
@@ -157,9 +160,8 @@ class Client(object):
     def _prepare_files_authorize(self):
         files = filter(isfile, listdir(self.datapackage.base_path))
 
-        accepted_descriptor = 'datapackage.json'
-        descriptor = [f for f in files if f == accepted_descriptor][0]
-        file_list = [descriptor]
+        file_list = ['datapackage.json']
+
         for resource in self.datapackage.resources:
             file_list.append(resource.descriptor['path'])
 
@@ -191,34 +193,21 @@ class Client(object):
             'type': None
         }
 
-    def _upload_file(self, path, local_path):
+    def _upload_file(self, path, filedata):
         '''Upload a file within the data package.'''
         # TODO: (?) echo('Uploading resource %s' % resource.local_data_path)
-
-        md5 = md5_file_chunk(local_path)
-        # Ask the server for s3 put url for a resource.
-        response = self._apirequest(
-                method='POST',
-                url='/api/auth/bitstore_upload',
-                json={
-                    'publisher': self.username,
-                    'package': self.datapackage.descriptor['name'],
-                    'path': path, 
-                    'md5': md5 
-                })
-        data = response.json().get('data')
-
-        if not data:
-            raise DpmException('server did not provide upload authorization for path: %s' % path)
-
-        # TODO: read file in chunks
-        #filestream = ChunkReader(local_path)
+        local_path = join(self.datapackage.base_path, path)
         filestream = open(local_path, 'rb')
+        data = filedata[path]
+        upload_url = data['upload_url']
+        upload_query = data['upload_query']
 
-        # with progressbar(length=filestream.len, label=' ') as bar:
-        #    filestream.on_progress = bar.update
-        #    response = requests.put(puturl, data=filestream)
-        response = requests.post(data['url'], data=data['fields'], files={'file': filestream})
+        if not upload_url or upload_query:
+            raise DpmException('server did not provide upload authorization for files')
+
+        response = requests.post(data['upload_url'],
+                                 data=data['upload_query'],
+                                 files={'file': filestream})
 
         if response.status_code not in (200, 201, 204):
             raise HTTPStatusError(
