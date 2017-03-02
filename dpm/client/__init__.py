@@ -7,7 +7,7 @@ from __future__ import unicode_literals
 import json as json_module
 import os
 import os.path
-from os.path import exists, isfile, join
+from os.path import exists, isfile, join, getsize
 from os import listdir
 
 from builtins import filter
@@ -122,23 +122,28 @@ class Client(object):
         self.validate()
         token = self._ensure_auth()
 
-        # TODO: (?) echo('Uploading datapackage.json ... ', nl=False)
         response = self._apirequest(
-                method='PUT',
-                url='/api/package/%s/%s' % (self.username, self.datapackage.descriptor['name']),
-                json=self.datapackage.descriptor
-                )
+                method='POST',
+                url='/api/datastore/authorize',
+                json=self._prepare_files_authorize()
+            )
 
-        for resource in self.datapackage.resources:
-            self._upload_file(resource.descriptor['path'], resource.local_data_path)
+        filedata = response.json().get('filedata')
+        if not filedata:
+            raise DpmException('server did not provide upload authorization for files')
+        for item in sorted(filedata.keys()):
+            local_path = join(self.datapackage.base_path, item)
+            filestream = open(local_path, 'rb')
+            data = filedata[item]
+            response = requests.post(data['upload_url'],
+                                     data=data['upload_query'],
+                                     files={'file': filestream})
 
-        files = filter(isfile, listdir(self.datapackage.base_path))
-        accepted_readme = ['README', 'README.txt', 'README.md']
-        readme_list = [f for f in files if f in accepted_readme]
-        if readme_list:
-            readme = readme_list[0]
-            readme_local_path = join(self.datapackage.base_path, readme)
-            self._upload_file(readme, readme_local_path)
+            if response.status_code not in (200, 201, 204):
+                raise HTTPStatusError(
+                    response,
+                    message='Bitstore upload failed.\nError %s\n%s' % (response.status_code, response.content))
+
 
         # TODO: (?) echo('Finalizing ... ', nl=False)
         response = self._apirequest(
@@ -148,6 +153,43 @@ class Client(object):
 
         # Return published datapackage url
         return self.server + '/%s/%s' % (self.username, self.datapackage.descriptor['name'])
+
+    def _prepare_files_authorize(self):
+        files = filter(isfile, listdir(self.datapackage.base_path))
+
+        accepted_descriptor = 'datapackage.json'
+        descriptor = [f for f in files if f == accepted_descriptor][0]
+        file_list = [descriptor]
+        for resource in self.datapackage.resources:
+            file_list.append(resource.descriptor['path'])
+
+        accepted_readme = ['README', 'README.txt', 'README.md']
+        readme_list = [f for f in files if f in accepted_readme]
+        if readme_list:
+            readme = readme_list[0]
+            file_list.append(readme)
+
+        filedata = {}
+        for file in file_list:
+            filedata[file] = self._get_file_info(file)
+
+        return {
+            'metadata': {
+                'owner': self.username,
+                'name': self.datapackage.descriptor['name']
+            },
+            'filedata': filedata
+        }
+
+    def _get_file_info(self, path):
+        local_path = join(self.datapackage.base_path, path)
+        md5 = md5_file_chunk(local_path)
+        size = getsize(local_path)
+        return {
+            'size': size,
+            'md5': md5,
+            'type': None
+        }
 
     def _upload_file(self, path, local_path):
         '''Upload a file within the data package.'''

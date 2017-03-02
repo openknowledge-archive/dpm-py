@@ -21,6 +21,7 @@ class PublishReadFileErrorTest(BaseCliTestCase):
     the cli.
     """
 
+    @patch('dpm.client.filter', lambda a, b: ['datapackage.json'])
     def test_publish_file_read_error(self):
         # GIVEN datapackage that can be treated as valid by the dpm
         self.valid_dp = datapackage.DataPackage({
@@ -37,11 +38,6 @@ class PublishReadFileErrorTest(BaseCliTestCase):
         responses.add(
             responses.POST, 'https://example.com/api/auth/token',
             json={'token': 'blabla'},
-            status=200)
-        # AND registry server accepts any datapackage
-        responses.add(
-            responses.PUT, 'https://example.com/api/package/user/some-datapackage',
-            json={'message': 'OK'},
             status=200)
 
         # AND the file that raises OSError on read()

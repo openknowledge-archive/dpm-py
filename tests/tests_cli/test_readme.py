@@ -77,27 +77,42 @@ class ReadmeTest(BaseCliTestCase):
         self.assertIn('Publishing Package without README', result.output)
 
     @patch('dpm.client.filter',
-           lambda a, b: ['README.', 'README.txt', 'README.md', 'README'])
+           lambda a, b: ['README.', 'README.txt', 'README.md', 'README', 'datapackage.json'])
     @patch('dpm.client.open', mock_open())  # mock csv file open
     @patch('dpm.utils.file.getsize', lambda a: 5)  # mock csv file size
+    @patch('dpm.client.getsize', lambda a: 10)
     @patch('dpm.client.md5_file_chunk', lambda a:
            '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
     def test_readme_sucess_for_multiple_readme(self):
-        # GIVEN the registry server accepts any datapackage
+
+        # Registry server gives bitstore upload urls
         responses.add(
-            responses.PUT, 'https://example.com/api/package/user/some-datapackage',
+            responses.POST, 'https://example.com/api/datastore/authorize',
+            json={
+                'filedata': {
+                    'datapackage.json': {'upload_url': 'https://s3.fake/put_here_datapackege', 'upload_query': {}},
+                    'readme': {'upload_url': 'https://s3.fake/put_here_readme', 'upload_query': {}},
+                    './data/some_data.csv': {'upload_url': 'https://s3.fake/put_here_resource', 'upload_query': {}}
+                }
+            },
+            status=200)
+        # AND s3 server allows data upload for resource
+        responses.add(
+            responses.POST, 'https://s3.fake/put_here_resource',
             json={'message': 'OK'},
             status=200)
-        # AND registry server gives bitstore upload url
+
+        # AND s3 server allows data upload for datapackage
         responses.add(
-            responses.POST, 'https://example.com/api/auth/bitstore_upload',
-            json={'data': {'url': 'https://s3.fake/put_here', 'fields': {}}},
-            status=200)
-        # AND s3 server allows data upload
-        responses.add(
-            responses.POST, 'https://s3.fake/put_here',
+            responses.POST, 'https://s3.fake/put_here_datapackege',
             json={'message': 'OK'},
             status=200)
+        # AND s3 server allows data upload for readme
+        responses.add(
+            responses.POST, 'https://s3.fake/put_here_readme',
+            json={'message': 'OK'},
+            status=200)
+
         # AND registry server successfully finalizes upload
         responses.add(
             responses.POST, 'https://example.com/api/package/user/some-datapackage/finalize',

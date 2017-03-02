@@ -33,9 +33,10 @@ class PublishSuccessTest(BaseCliTestCase):
         patch('dpm.client.DataPackage', lambda *a: self.valid_dp).start()
         patch('dpm.client.exists', lambda *a: True).start()
 
-    @patch('dpm.client.filter', lambda *a: ['README.md'])
+    @patch('dpm.client.filter', lambda *a: ['README.md', 'datapackage.json'])
     @patch('dpm.client.open', mock_open())  # mock csv file open
     @patch('dpm.utils.file.getsize', lambda a: 5)  # mock csv file size
+    @patch('dpm.client.getsize', lambda a: 10)  # mock all file size
     @patch('dpm.client.md5_file_chunk', lambda a:
            '855f938d67b52b5a7eb124320a21a139')  # mock md5 checksum
     def test_publish_success(self):
@@ -44,19 +45,32 @@ class PublishSuccessTest(BaseCliTestCase):
             responses.POST, 'https://example.com/api/auth/token',
             json={'token': 'blabla'},
             status=200)
-        # AND registry server accepts any datapackage
-        responses.add(
-            responses.PUT, 'https://example.com/api/package/user/some-datapackage',
-            json={'message': 'OK'},
-            status=200)
+
         # AND registry server gives bitstore upload url
         responses.add(
-            responses.POST, 'https://example.com/api/auth/bitstore_upload',
-            json={'data': {'url': 'https://s3.fake/put_here', 'fields': {}}},
+            responses.POST, 'https://example.com/api/datastore/authorize',
+            json={
+                'filedata': {
+                    'datapackage.json': {'upload_url': 'https://s3.fake/put_here_datapackege', 'upload_query': {}},
+                    'readme': {'upload_url': 'https://s3.fake/put_here_readme', 'upload_query': {}},
+                    './data/some_data.csv': {'upload_url': 'https://s3.fake/put_here_resource', 'upload_query': {}}
+                }
+            },
             status=200)
-        # AND s3 server allows data upload
+
+        # AND s3 server allows data upload for datapackage
         responses.add(
-            responses.POST, 'https://s3.fake/put_here',
+            responses.POST, 'https://s3.fake/put_here_datapackege',
+            json={'message': 'OK'},
+            status=200)
+        # AND s3 server allows data upload for readme
+        responses.add(
+            responses.POST, 'https://s3.fake/put_here_readme',
+            json={'message': 'OK'},
+            status=200)
+        # AND s3 server allows data upload for resource
+        responses.add(
+            responses.POST, 'https://s3.fake/put_here_resource',
             json={'message': 'OK'},
             status=200)
         # AND registry server successfully finalizes upload
@@ -70,7 +84,7 @@ class PublishSuccessTest(BaseCliTestCase):
 
         # THEN published package url should be printed to stdout
         self.assertRegexpMatches(result.output, 'Datapackage successfully published. It is available at https://example.com/user/some-datapackage')
-        # AND 7 requests should be sent
+        # AND 6 requests should be sent
         self.assertEqual(
             [(x.request.method, x.request.url, jsonify(x.request))
              for x in responses.calls],
@@ -78,21 +92,37 @@ class PublishSuccessTest(BaseCliTestCase):
                 # POST authorization
                 ('POST', 'https://example.com/api/auth/token',
                     {"username": "user", "secret": "access_token"}),
-                # PUT metadata with datapackage.json contents
-                ('PUT', 'https://example.com/api/package/user/some-datapackage',
-                    self.valid_dp.to_dict()),
+
                 # POST authorize presigned url for s3 upload
-                ('POST', 'https://example.com/api/auth/bitstore_upload',
-                    {"publisher": "user", "package": "some-datapackage",
-                     "path": "./data/some_data.csv", "md5": '855f938d67b52b5a7eb124320a21a139'}),
+                ('POST', 'https://example.com/api/datastore/authorize',
+                 {
+                     'metadata': {
+                         'owner': 'user',
+                         'name': 'some-datapackage'
+                     },
+                     'filedata': {
+                        "README.md": {
+                            "md5": '855f938d67b52b5a7eb124320a21a139',
+                            "size": 10,
+                            "type": None
+                        },
+                        "datapackage.json": {
+                            "md5": '855f938d67b52b5a7eb124320a21a139',
+                            "size": 10,
+                            "type": None
+                        },
+                        "./data/some_data.csv": {
+                            "md5": '855f938d67b52b5a7eb124320a21a139',
+                            "size": 10,
+                            "type": None
+                        }
+                     }
+                 }),
                 # POST data to s3
-                ('POST', 'https://s3.fake/put_here', ''),
-                # POST authorized presigned url for README
-                ('POST', 'https://example.com/api/auth/bitstore_upload',
-                    {"publisher": "user", "package": "some-datapackage",
-                     "path": "README.md", "md5": '855f938d67b52b5a7eb124320a21a139'}),
-                # POST README to S3
-                ('POST', 'https://s3.fake/put_here', ''),
+                ('POST', 'https://s3.fake/put_here_resource', ''),
+                ('POST', 'https://s3.fake/put_here_datapackege', ''),
+                ('POST', 'https://s3.fake/put_here_readme', ''),
+
                 # POST finalize upload
                 ('POST', 'https://example.com/api/package/user/some-datapackage/finalize', '')])
         # AND exit code should be 0
