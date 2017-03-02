@@ -122,31 +122,42 @@ class Client(object):
         self.validate()
         token = self._ensure_auth()
 
+        file_list = ['datapackage.json']
+
+        accepted_readme = ['README', 'README.txt', 'README.md']
+        files = filter(isfile, listdir(self.datapackage.base_path))
+        readme_list = [f for f in files if f in accepted_readme]
+        if readme_list:
+            readme = readme_list[0]
+            file_list.append(readme)
+
+        for resource in self.datapackage.resources:
+            file_list.append(resource.descriptor['path'])
+
+        filedata = {}
+        for file in file_list:
+            filedata[file] = self._get_file_info(file)
+
+        file_info_for_request = {
+            'metadata': {
+                'owner': self.username,
+                'name': self.datapackage.descriptor['name']
+            },
+            'filedata': filedata
+        }
+
         response = self._apirequest(
                 method='POST',
                 url='/api/datastore/authorize',
-                json=self._prepare_files_authorize()
+                json=file_info_for_request
             )
-
         filedata = response.json().get('filedata')
         if not filedata:
             raise DpmException('server did not provide upload authorization for files')
 
         # Upload datapackage.json
-        self._upload_file('datapackage.json', filedata)
-        del filedata['datapackage.json']
-
-        # Upload readme
-        accepted_readme = ['README', 'README.txt', 'README.md']
-        readme_list = [f for f in filedata.keys() if f in accepted_readme]
-        if readme_list:
-            readme = readme_list[0]
-            self._upload_file(readme, filedata)
-            del filedata[readme]
-
-        for item in filedata.keys():
-            self._upload_file(item, filedata)
-
+        for path in file_list:
+            self._upload_file(path, filedata[path])
 
         # TODO: (?) echo('Finalizing ... ', nl=False)
         response = self._apirequest(
@@ -156,32 +167,6 @@ class Client(object):
 
         # Return published datapackage url
         return self.server + '/%s/%s' % (self.username, self.datapackage.descriptor['name'])
-
-    def _prepare_files_authorize(self):
-        files = filter(isfile, listdir(self.datapackage.base_path))
-
-        file_list = ['datapackage.json']
-
-        for resource in self.datapackage.resources:
-            file_list.append(resource.descriptor['path'])
-
-        accepted_readme = ['README', 'README.txt', 'README.md']
-        readme_list = [f for f in files if f in accepted_readme]
-        if readme_list:
-            readme = readme_list[0]
-            file_list.append(readme)
-
-        filedata = {}
-        for file in file_list:
-            filedata[file] = self._get_file_info(file)
-
-        return {
-            'metadata': {
-                'owner': self.username,
-                'name': self.datapackage.descriptor['name']
-            },
-            'filedata': filedata
-        }
 
     def _get_file_info(self, path):
         local_path = join(self.datapackage.base_path, path)
@@ -193,17 +178,11 @@ class Client(object):
             'type': None
         }
 
-    def _upload_file(self, path, filedata):
+    def _upload_file(self, path, data):
         '''Upload a file within the data package.'''
         # TODO: (?) echo('Uploading resource %s' % resource.local_data_path)
         local_path = join(self.datapackage.base_path, path)
         filestream = open(local_path, 'rb')
-        data = filedata[path]
-        upload_url = data['upload_url']
-        upload_query = data['upload_query']
-
-        if not upload_url or upload_query:
-            raise DpmException('server did not provide upload authorization for files')
 
         response = requests.post(data['upload_url'],
                                  data=data['upload_query'],

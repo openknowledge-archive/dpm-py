@@ -52,7 +52,7 @@ class PublishSuccessTest(BaseCliTestCase):
             json={
                 'filedata': {
                     'datapackage.json': {'upload_url': 'https://s3.fake/put_here_datapackege', 'upload_query': {}},
-                    'readme': {'upload_url': 'https://s3.fake/put_here_readme', 'upload_query': {}},
+                    'README.md': {'upload_url': 'https://s3.fake/put_here_readme', 'upload_query': {}},
                     './data/some_data.csv': {'upload_url': 'https://s3.fake/put_here_resource', 'upload_query': {}}
                 }
             },

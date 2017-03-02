@@ -491,24 +491,3 @@ class ClientEnsureAuthSuccessTest(BaseClientTestCase):
         # AND client should store the token
         assert client.token == '12345'
 
-
-class ClientUploadFileReadErrorTest(BaseClientTestCase):
-    """
-    When read error happens on file upload, it should be raised.
-    """
-    def test_file_read_error(self):
-        # GIVEN the client
-        client = Client(dp1_path, self.config)
-
-        # AND the file that raises OSError on read()
-        mockopen = patch('dpm.utils.md5_hash.open', mock_open()).start()
-        mockopen.return_value.read.side_effect = OSError
-
-        # WHEN _upload_file() is called
-        try:
-            result = client._upload_file('data.csv', '/local/data.csv')
-        except Exception as e:
-            result = e
-
-        # THEN OSError should be raised
-        assert isinstance(result, OSError)
