@@ -75,8 +75,8 @@ class PublishSuccessTest(BaseCliTestCase):
             status=200)
         # AND registry server successfully finalizes upload
         responses.add(
-            responses.POST, 'https://example.com/api/package/user/some-datapackage/finalize',
-            json={'message': 'OK'},
+            responses.POST, 'https://example.com/api/package/upload',
+            json={'status': 'queued'},
             status=200)
 
         # WHEN `dpm publish` is invoked
@@ -123,6 +123,8 @@ class PublishSuccessTest(BaseCliTestCase):
                 ('POST', 'https://s3.fake/put_here_readme', ''),
                 ('POST', 'https://s3.fake/put_here_resource', ''),
                 # POST finalize upload
-                ('POST', 'https://example.com/api/package/user/some-datapackage/finalize', '')])
+                ('POST', 'https://example.com/api/package/upload',
+                 {'datapackage': 'https://s3.fake/put_here_datapackege'})
+            ])
         # AND exit code should be 0
         self.assertEqual(result.exit_code, 0)

@@ -160,10 +160,15 @@ class Client(object):
             self._upload_file(path, filedata[path])
 
         # TODO: (?) echo('Finalizing ... ', nl=False)
+        data_package_s3_url = filedata['datapackage.json']['upload_url']
         response = self._apirequest(
             method='POST',
-            url='/api/package/%s/%s/finalize' % (self.username, self.datapackage.descriptor['name'])
+            url='/api/package/upload',
+            json={'datapackage': data_package_s3_url}
         )
+        status = response.json().get('status', None)
+        if status is None or status != 'queued':
+            raise DpmException('server did not provide upload authorization for files')
 
         # Return published datapackage url
         return self.server + '/%s/%s' % (self.username, self.datapackage.descriptor['name'])

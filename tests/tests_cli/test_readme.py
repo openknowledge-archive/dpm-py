@@ -115,8 +115,8 @@ class ReadmeTest(BaseCliTestCase):
 
         # AND registry server successfully finalizes upload
         responses.add(
-            responses.POST, 'https://example.com/api/package/user/some-datapackage/finalize',
-            json={'message': 'OK'},
+            responses.POST, 'https://example.com/api/package/upload',
+            json={'status': 'queued'},
             status=200)
         # WHEN `dpm publish` is invoked
         result = self.invoke(cli, ['publish'])

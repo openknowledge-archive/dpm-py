@@ -261,8 +261,8 @@ class ClientPublishSuccessTest(BaseClientTestCase):
             status=200)
         # AND registry server successfully finalizes upload
         responses.add(
-            responses.POST, 'https://example.com/api/package/%s/%s/finalize' % (username, dp_name),
-            json={'message': 'OK'},
+            responses.POST, 'https://example.com/api/package/upload',
+            json={'status': 'queued'},
             status=200)
 
         # WHEN publish() is invoked
@@ -306,8 +306,9 @@ class ClientPublishSuccessTest(BaseClientTestCase):
                 ('POST', 'https://s3.fake/put_here_readme', ''),
                 ('POST', 'https://s3.fake/put_here_resource', ''),
                 # POST finalize upload
-                ('POST', 'https://example.com/api/package/%s/%s/finalize' %
-                    (username, dp_name), '')])
+                ('POST', 'https://example.com/api/package/upload',
+                 {'datapackage': 'https://s3.fake/put_here_datapackege'})
+            ])
 
 
 class PublishInvalidTest(BaseClientTestCase):
