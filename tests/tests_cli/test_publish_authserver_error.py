@@ -48,20 +48,18 @@ class PublishAuthServerErrorTest(BaseCliTestCase):
         self.assertEqual(result.exit_code, 1)
 
     @patch('dpm.client.md5_file_chunk', lambda a: '855f938d6')  # mock md5 checksum
+    @patch('dpm.client.filter', lambda a, b: ['datapackage.json'])
+    @patch('dpm.client.getsize', lambda a: 10)
     def test_getting_empty_put_url(self):
         # GIVEN registry server that accepts any user
         responses.add(
                 responses.POST, 'https://example.com/api/auth/token',
                 json={"token": "sometoken"},
                 status=200)
-        # AND registry server accepts any datapackage
-        responses.add(
-                responses.PUT, 'https://example.com/api/package/user/some-datapackage',
-                json={'message': 'OK'},
-                status=200)
+
         # AND registry server gives empty bitstore upload url
         responses.add(
-                responses.POST, 'https://example.com/api/auth/bitstore_upload',
+                responses.POST, 'https://example.com/api/datastore/authorize',
                 json={'key': ""},
                 status=200)
 
@@ -69,6 +67,6 @@ class PublishAuthServerErrorTest(BaseCliTestCase):
         result = self.invoke(cli, ['publish'])
 
         # THEN 'server did not return resource put url' should be printed to stdout
-        self.assertRegexpMatches(result.output, 'server did not provide upload authorization for path:')
+        self.assertRegexpMatches(result.output, 'server did not provide upload authorization for files')
         # AND exit code should be 1
         self.assertEqual(result.exit_code, 1)

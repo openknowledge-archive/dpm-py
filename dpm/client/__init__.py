@@ -7,7 +7,7 @@ from __future__ import unicode_literals
 import json as json_module
 import os
 import os.path
-from os.path import exists, isfile, join
+from os.path import exists, isfile, join, getsize
 from os import listdir
 
 from builtins import filter
@@ -122,61 +122,76 @@ class Client(object):
         self.validate()
         token = self._ensure_auth()
 
-        # TODO: (?) echo('Uploading datapackage.json ... ', nl=False)
-        response = self._apirequest(
-                method='PUT',
-                url='/api/package/%s/%s' % (self.username, self.datapackage.descriptor['name']),
-                json=self.datapackage.descriptor
-                )
+        file_list = ['datapackage.json']
 
-        for resource in self.datapackage.resources:
-            self._upload_file(resource.descriptor['path'], resource.local_data_path)
-
-        files = filter(isfile, listdir(self.datapackage.base_path))
         accepted_readme = ['README', 'README.txt', 'README.md']
+        files = filter(isfile, listdir(self.datapackage.base_path))
         readme_list = [f for f in files if f in accepted_readme]
         if readme_list:
             readme = readme_list[0]
-            readme_local_path = join(self.datapackage.base_path, readme)
-            self._upload_file(readme, readme_local_path)
+            file_list.append(readme)
+
+        for resource in self.datapackage.resources:
+            file_list.append(resource.descriptor['path'])
+
+        filedata = {}
+        for file in file_list:
+            filedata[file] = self._get_file_info(file)
+
+        file_info_for_request = {
+            'metadata': {
+                'owner': self.username,
+                'name': self.datapackage.descriptor['name']
+            },
+            'filedata': filedata
+        }
+
+        response = self._apirequest(
+                method='POST',
+                url='/api/datastore/authorize',
+                json=file_info_for_request
+            )
+        filedata = response.json().get('filedata')
+        if not filedata:
+            raise DpmException('server did not provide upload authorization for files')
+
+        # Upload datapackage.json
+        for path in file_list:
+            self._upload_file(path, filedata[path])
 
         # TODO: (?) echo('Finalizing ... ', nl=False)
+        data_package_s3_url = filedata['datapackage.json']['upload_url']
         response = self._apirequest(
             method='POST',
-            url='/api/package/%s/%s/finalize' % (self.username, self.datapackage.descriptor['name'])
+            url='/api/package/upload',
+            json={'datapackage': data_package_s3_url}
         )
+        status = response.json().get('status', None)
+        if status is None or status != 'queued':
+            raise DpmException('server did not provide upload authorization for files')
 
         # Return published datapackage url
         return self.server + '/%s/%s' % (self.username, self.datapackage.descriptor['name'])
 
-    def _upload_file(self, path, local_path):
+    def _get_file_info(self, path):
+        local_path = join(self.datapackage.base_path, path)
+        md5 = md5_file_chunk(local_path)
+        size = getsize(local_path)
+        return {
+            'size': size,
+            'md5': md5,
+            'type': None
+        }
+
+    def _upload_file(self, path, data):
         '''Upload a file within the data package.'''
         # TODO: (?) echo('Uploading resource %s' % resource.local_data_path)
-
-        md5 = md5_file_chunk(local_path)
-        # Ask the server for s3 put url for a resource.
-        response = self._apirequest(
-                method='POST',
-                url='/api/auth/bitstore_upload',
-                json={
-                    'publisher': self.username,
-                    'package': self.datapackage.descriptor['name'],
-                    'path': path, 
-                    'md5': md5 
-                })
-        data = response.json().get('data')
-
-        if not data:
-            raise DpmException('server did not provide upload authorization for path: %s' % path)
-
-        # TODO: read file in chunks
-        #filestream = ChunkReader(local_path)
+        local_path = join(self.datapackage.base_path, path)
         filestream = open(local_path, 'rb')
 
-        # with progressbar(length=filestream.len, label=' ') as bar:
-        #    filestream.on_progress = bar.update
-        #    response = requests.put(puturl, data=filestream)
-        response = requests.post(data['url'], data=data['fields'], files={'file': filestream})
+        response = requests.post(data['upload_url'],
+                                 data=data['upload_query'],
+                                 files={'file': filestream})
 
         if response.status_code not in (200, 201, 204):
             raise HTTPStatusError(
@@ -230,7 +245,7 @@ class Client(object):
 
         headers = kwargs.pop('headers', {})
         if self.token:
-            headers.setdefault('Authorization', 'Bearer %s' % self.token)
+            headers.setdefault('Auth-Token', '%s' % self.token)
 
         response = methods.get(method)(url, *args, headers=headers, **kwargs)
 
