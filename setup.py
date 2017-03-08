@@ -24,8 +24,7 @@ INSTALL_REQUIRES = [
     'goodtables==1.0.0a5',
     'requests',
     'six',
-    'future',
-    'gitpython'
+    'future'
 ]
 
 TESTS_REQUIRE = [
