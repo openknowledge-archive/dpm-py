@@ -238,9 +238,12 @@ class ClientPublishSuccessTest(BaseClientTestCase):
             responses.POST, 'https://example.com/api/datastore/authorize',
             json={
                 'filedata': {
-                    'datapackage.json': {'upload_url': 'https://s3.fake/put_here_datapackege', 'upload_query': {}},
-                    'README.md': {'upload_url': 'https://s3.fake/put_here_readme', 'upload_query': {}},
-                    'data/some-data.csv': {'upload_url': 'https://s3.fake/put_here_resource', 'upload_query': {}}
+                    'datapackage.json': {'upload_url': 'https://s3.fake/put_here_datapackege',
+                                         'upload_query': {'key': 'k'}},
+                    'README.md': {'upload_url': 'https://s3.fake/put_here_readme',
+                                  'upload_query': {'key': 'k'}},
+                    'data/some-data.csv': {'upload_url': 'https://s3.fake/put_here_resource',
+                                           'upload_query': {'key': 'k'}}
                 }
             },
             status=200)
@@ -287,17 +290,20 @@ class ClientPublishSuccessTest(BaseClientTestCase):
                          "README.md": {
                              "md5": '2ODaQHCqodO2B/cbf03lgA==',
                              "size": 24,
-                             "type": None
+                             "type": 'binary/octet-stream',
+                             'name': 'README.md'
                          },
                          "datapackage.json": {
                              "md5": 'mDmEykSS++mJF3SaWW56kw==',
                              "size": 120,
-                             "type": None
+                             "type": 'application/json',
+                             'name': 'datapackage.json'
                          },
                          "data/some-data.csv": {
                              "md5": 'Nlu4VmSF8ZT6wK4QjL8iyw==',
                              "size": 12,
-                             "type": None
+                             "type": 'binary/octet-stream',
+                             'name': 'data/some-data.csv'
                          }
                      }
                  }),
@@ -307,7 +313,7 @@ class ClientPublishSuccessTest(BaseClientTestCase):
                 ('POST', 'https://s3.fake/put_here_resource', ''),
                 # POST finalize upload
                 ('POST', 'https://example.com/api/package/upload',
-                 {'datapackage': 'https://s3.fake/put_here_datapackege'})
+                 {'datapackage': 'https://s3.fake/put_here_datapackege/k'})
             ])
 
 

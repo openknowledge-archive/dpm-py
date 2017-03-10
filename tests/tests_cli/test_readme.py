@@ -90,9 +90,12 @@ class ReadmeTest(BaseCliTestCase):
             responses.POST, 'https://example.com/api/datastore/authorize',
             json={
                 'filedata': {
-                    'datapackage.json': {'upload_url': 'https://s3.fake/put_here_datapackege', 'upload_query': {}},
-                    'README.txt': {'upload_url': 'https://s3.fake/put_here_readme', 'upload_query': {}},
-                    './data/some_data.csv': {'upload_url': 'https://s3.fake/put_here_resource', 'upload_query': {}}
+                    'datapackage.json': {'upload_url': 'https://s3.fake/put_here_datapackege',
+                                         'upload_query': {'key': 'k'}},
+                    'README.txt': {'upload_url': 'https://s3.fake/put_here_readme',
+                                   'upload_query': {'key': 'k'}},
+                    './data/some_data.csv': {'upload_url': 'https://s3.fake/put_here_resource',
+                                             'upload_query': {'key': 'k'}}
                 }
             },
             status=200)

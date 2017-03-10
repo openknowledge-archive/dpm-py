@@ -27,6 +27,7 @@ class DpmException(Exception):
 
 class BaseResponseError(DpmException):
     """ Base class for errors caused by processing a response """
+
     def __init__(self, response, message):
         self.response = response
         self.message = message
@@ -34,13 +35,16 @@ class BaseResponseError(DpmException):
     def __str__(self):
         return self.message
 
+
 class AuthResponseError(BaseResponseError):
     """ Recieved malformed response form authentication server. """
     pass
 
+
 class JSONDecodeError(BaseResponseError):
     """ Failed to decode response JSON. """
     pass
+
 
 class HTTPStatusError(BaseResponseError):
     """ Response status_code indicated error processing the request. """
@@ -160,7 +164,8 @@ class Client(object):
             self._upload_file(path, filedata[path])
 
         # TODO: (?) echo('Finalizing ... ', nl=False)
-        data_package_s3_url = filedata['datapackage.json']['upload_url']
+        data_package_s3_url = filedata['datapackage.json']['upload_url'] + '/' +\
+                              filedata['datapackage.json']['upload_query']['key']
         response = self._apirequest(
             method='POST',
             url='/api/package/upload',
@@ -177,10 +182,16 @@ class Client(object):
         local_path = join(self.datapackage.base_path, path)
         md5 = md5_file_chunk(local_path)
         size = getsize(local_path)
+
+        file_type = 'binary/octet-stream'
+        if path.endswith('.json'):
+            file_type = 'application/json'
+
         return {
             'size': size,
             'md5': md5,
-            'type': None
+            'type': file_type,
+            'name': path
         }
 
     def _upload_file(self, path, data):
@@ -207,12 +218,12 @@ class Client(object):
         """
         if self.token:
             return self.token
-        
+
         self._ensure_config()
         authresponse = self._apirequest(
-                method='POST',
-                url='/api/auth/token',
-                json={'username': self.username, 'secret': self.access_token})
+            method='POST',
+            url='/api/auth/token',
+            json={'username': self.username, 'secret': self.access_token})
 
         self.token = authresponse.json().get('token')
         if not self.token:
@@ -276,7 +287,7 @@ class Client(object):
         """
         Purge datapackage from the registry server.
         """
-        #echo('Purging %s ... ' % dp.descriptor['name'], nl=False)  # TODO: logging
+        # echo('Purging %s ... ' % dp.descriptor['name'], nl=False)  # TODO: logging
         self._ensure_auth()
         response = self._apirequest(
             method='DELETE',
@@ -286,7 +297,7 @@ class Client(object):
         """
         Delete datapackage from the registry server.
         """
-        #echo('Deleting %s ... ' % dp.descriptor['name'], nl=False)  # TODO: logging
+        # echo('Deleting %s ... ' % dp.descriptor['name'], nl=False)  # TODO: logging
         self._ensure_auth()
         response = self._apirequest(
             method='DELETE',
@@ -296,7 +307,7 @@ class Client(object):
         """
         Undelete datapackage from the registry server.
         """
-        #echo('Undeleting %s ... ' % dp.descriptor['name'], nl=False)  # TODO: logging
+        # echo('Undeleting %s ... ' % dp.descriptor['name'], nl=False)  # TODO: logging
         self._ensure_auth()
         response = self._apirequest(
             method='POST',
@@ -310,9 +321,9 @@ def validate_metadata(datapackage):
     for idx, resource in enumerate(datapackage.resources):
         if not exists(resource.local_data_path):
             raise ResourceDoesNotExist(
-                    'Resource at index %s and path %s does not exist on disk' % (
+                'Resource at index %s and path %s does not exist on disk' % (
                     idx, resource.local_data_path)
-                )
+            )
 
     return True
 
@@ -336,7 +347,7 @@ def print_inspection_report(report, print_json=False):
 
     # TODO: time varies in tests, maybe we can omit it for simplicity
     # https://github.com/frictionlessdata/goodtables-py/issues/169
-    #report.pop('time')
+    # report.pop('time')
 
     echo('DATASET', bold=True)
     echo('=======', bold=True)
@@ -354,7 +365,7 @@ def print_inspection_report(report, print_json=False):
         errors = table.pop('errors')
 
         # TODO: time varies in tests, maybe we can omit it for simplicity
-        #table.pop('time')
+        # table.pop('time')
 
         echo(json_module.dumps(table, indent=4), fg=color, bold=True)
         if errors:

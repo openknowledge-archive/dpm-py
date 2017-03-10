@@ -51,9 +51,12 @@ class PublishSuccessTest(BaseCliTestCase):
             responses.POST, 'https://example.com/api/datastore/authorize',
             json={
                 'filedata': {
-                    'datapackage.json': {'upload_url': 'https://s3.fake/put_here_datapackege', 'upload_query': {}},
-                    'README.md': {'upload_url': 'https://s3.fake/put_here_readme', 'upload_query': {}},
-                    './data/some_data.csv': {'upload_url': 'https://s3.fake/put_here_resource', 'upload_query': {}}
+                    'datapackage.json': {'upload_url': 'https://s3.fake/put_here_datapackege',
+                                         'upload_query': {'key': 'k'}},
+                    'README.md': {'upload_url': 'https://s3.fake/put_here_readme',
+                                  'upload_query': {'key': 'k'}},
+                    './data/some_data.csv': {'upload_url': 'https://s3.fake/put_here_resource',
+                                             'upload_query': {'key': 'k'}}
                 }
             },
             status=200)
@@ -86,45 +89,20 @@ class PublishSuccessTest(BaseCliTestCase):
         self.assertRegexpMatches(result.output, 'Datapackage successfully published. It is available at https://example.com/user/some-datapackage')
         # AND 6 requests should be sent
         self.assertEqual(
-            [(x.request.method, x.request.url, jsonify(x.request))
+            [(x.request.method, x.request.url)
              for x in responses.calls],
             [
                 # POST authorization
-                ('POST', 'https://example.com/api/auth/token',
-                    {"username": "user", "secret": "access_token"}),
+                ('POST', 'https://example.com/api/auth/token'),
 
                 # POST authorize presigned url for s3 upload
-                ('POST', 'https://example.com/api/datastore/authorize',
-                 {
-                     'metadata': {
-                         'owner': 'user',
-                         'name': 'some-datapackage'
-                     },
-                     'filedata': {
-                        "README.md": {
-                            "md5": '855f938d67b52b5a7eb124320a21a139',
-                            "size": 10,
-                            "type": None
-                        },
-                        "datapackage.json": {
-                            "md5": '855f938d67b52b5a7eb124320a21a139',
-                            "size": 10,
-                            "type": None
-                        },
-                        "./data/some_data.csv": {
-                            "md5": '855f938d67b52b5a7eb124320a21a139',
-                            "size": 10,
-                            "type": None
-                        }
-                     }
-                 }),
+                ('POST', 'https://example.com/api/datastore/authorize'),
                 # POST data to s3
-                ('POST', 'https://s3.fake/put_here_datapackege', ''),
-                ('POST', 'https://s3.fake/put_here_readme', ''),
-                ('POST', 'https://s3.fake/put_here_resource', ''),
+                ('POST', 'https://s3.fake/put_here_datapackege'),
+                ('POST', 'https://s3.fake/put_here_readme'),
+                ('POST', 'https://s3.fake/put_here_resource'),
                 # POST finalize upload
-                ('POST', 'https://example.com/api/package/upload',
-                 {'datapackage': 'https://s3.fake/put_here_datapackege'})
+                ('POST', 'https://example.com/api/package/upload')
             ])
         # AND exit code should be 0
         self.assertEqual(result.exit_code, 0)
