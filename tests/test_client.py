@@ -20,6 +20,7 @@ from .base import BaseTestCase
 from .base import jsonify
 
 dp1_path = 'tests/fixtures/dp1'
+dp2_path = 'tests/fixtures/dp2'
 
 
 class BaseClientTestCase(BaseTestCase):
@@ -209,6 +210,11 @@ class ClientValidateTest(BaseClientTestCase):
         assert isinstance(result, ResourceDoesNotExist)
         # AND it should say that resource does not exist
         assert "data/some_data.csv does not exist on disk" in str(result)
+
+    def test_skip_validate_non_tabular_data_package(self):
+        client = Client(dp2_path, datavalidate=True)
+        result = client.validate()
+        self.assertTrue(result)
 
 
 class ClientPublishSuccessTest(BaseClientTestCase):

@@ -12,10 +12,12 @@ from os import listdir
 
 from builtins import filter
 from datapackage import DataPackage
-import goodtables
+import datetime
+from goodtables import Inspector
 import requests
 import six
-
+from tabulator import Stream
+from jsontableschema import Schema
 from dpm.utils.md5_hash import md5_file_chunk
 from dpm.utils.file import ChunkReader
 from dpm.utils.click import echo
@@ -329,8 +331,44 @@ def validate_metadata(datapackage):
 
 
 def validate_data(datapackage):
-    inspector = goodtables.Inspector()
-    return inspector.inspect(datapackage.descriptor, preset='datapackage')
+    # Start timer
+    start = datetime.datetime.now()
+
+    tables = []
+    for resource in datapackage.resources:
+        is_tabular = resource.descriptor.get('format', None) == 'csv' \
+                or resource.descriptor.get('mediatype', None) == 'text/csv' \
+                or resource.local_data_path.endswith('csv')
+
+        if is_tabular:
+            path = resource.remote_data_path or resource.local_data_path
+            tables.append({
+                'source': path,
+                'stream': Stream(path, headers=1),
+                'schema': Schema(resource.descriptor['schema']),
+                'extra': {}
+            })
+    inspector = Inspector()
+
+    reports = []
+    errors = []
+    for table in tables:
+        report = inspector._Inspector__inspect_table(table)
+        errors.extend(report['errors'])
+        reports.append(report)
+
+    # Stop timer
+    stop = datetime.datetime.now()
+    errors = errors[:1000]
+    report = {
+        'time': round((stop - start).total_seconds(), 3),
+        'valid': True if len(reports) == 0 else all(report['valid'] for report in reports),
+        'table-count': len(tables),
+        'error-count': sum(len(report['errors']) for report in reports),
+        'errors': errors,
+        'tables': reports,
+    }
+    return report
 
 
 def print_inspection_report(report, print_json=False):
