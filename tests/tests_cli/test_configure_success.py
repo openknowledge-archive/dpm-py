@@ -32,8 +32,11 @@ class ConfigureSuccessTest(BaseCliTestCase):
         result = self.invoke(cli, ['configure'])
 
         # THEN 'Configuration saved' should be printed to stdout
-        self.assertRegexpMatches(result.output, 'Configuration saved')
+        # Would like to test the configuration was saved to the correct
+        # filename but as we are mocking configobj we can't ...
+        self.assertRegexpMatches(result.output, 'Configuration saved to: ')
         # AND config should be written to disk
         self.config.write.assert_called_once()
         # AND exit code should be 0
         self.assertEqual(result.exit_code, 0)
+

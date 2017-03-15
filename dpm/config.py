@@ -60,7 +60,7 @@ def prompt_config(config_path):
     config['server'] = input('Server URL: ')
 
     config.write()
-    echo('Configuration saved')
+    echo('Configuration saved to: %s' % config.filename)
 
 
 def read_config(config_path=None):

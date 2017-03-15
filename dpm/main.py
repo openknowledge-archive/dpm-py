@@ -66,7 +66,7 @@ DATAVALIDATE = True
 
 @click.group()
 @click.version_option(version=__version__)
-@click.option('--config', 'config_path',
+@click.option('--config', 'config_path', default=config.configfile,
               help='Use custom config file. Default %s' % config.configfile)
 @click.option('--debug', is_flag=True, default=False,
               help='Show debug messages')
