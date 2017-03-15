@@ -72,10 +72,9 @@ class DatavalidateInvalidDatapackageTest(BaseCliTestCase):
         # Strip time measurements
         # https://github.com/frictionlessdata/goodtables-py/issues/169
         report.pop('time')
+        report['errors'] = []
         for table in report['tables']:
             table.pop('time')
-            # The dp descriptor serialization is unstable. Strip it too.
-            table.pop('datapackage')
 
         # THEN json with validation error should be printed to stdout
         assert report == {
