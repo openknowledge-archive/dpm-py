@@ -183,8 +183,8 @@ class Client(object):
         md5 = md5_file_chunk(local_path)
         size = getsize(local_path)
 
-        file_type = 'binary/octet-stream'
-        if path.endswith('.json'):
+        file_type = 'text/plain'
+        if path.endswith('datapackage.json'):
             file_type = 'application/json'
 
         return {
