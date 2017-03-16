@@ -45,7 +45,7 @@ TESTS_REQUIRE = [
 setup(
     name='dpmpy',
     version=read('dpm', 'VERSION'),
-    description='dpmpy is a package manager for datapackages',
+    description='dpm is a package manager for Data Packages',
     long_description=read('README.md'),
     author='Atomatic',
     author_email='hello@atomatic.net',
@@ -58,7 +58,7 @@ setup(
     extras_require={'develop': TESTS_REQUIRE},
     test_suite='nose.collector',
     entry_points={
-        'console_scripts': ['dpmpy = dpm.main:cli'],
+        'console_scripts': ['dpm = dpm.main:cli'],
     },
     classifiers = [
         'Development Status :: 4 - Beta',
