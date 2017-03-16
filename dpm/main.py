@@ -64,7 +64,7 @@ def echo_errors(f):
 
 DATAVALIDATE = True
 
-@click.group()
+@click.group(context_settings={'help_option_names':['-h','--help']})
 @click.version_option(version=__version__)
 @click.option('--config', 'config_path', default=config.configfile,
               help='Use custom config file. Default %s' % config.configfile)
@@ -72,7 +72,7 @@ DATAVALIDATE = True
               help='Show debug messages')
 @click.pass_context
 def cli(ctx, config_path, debug):
-    if ctx.invoked_subcommand in ('configure', 'datavalidate'):
+    if ctx.invoked_subcommand in ('configure', 'datavalidate', 'help'):
         # subcommand does not require Client isntance.
         return
 
@@ -87,6 +87,12 @@ def cli(ctx, config_path, debug):
         sys.exit(1)
 
     ctx.meta['client'] = client
+
+
+@cli.command()
+@click.pass_context
+def help(ctx, command=None):
+    echo(ctx.parent.get_help())
 
 
 @cli.command()
