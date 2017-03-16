@@ -17,12 +17,20 @@ def read(*paths):
     return io.open(fullpath, encoding='utf-8').read().strip()
 
 
+# FIX for old versions of python with SSL warnings
+# https://github.com/frictionlessdata/dpm-py/issues/94
+import platform
+import distutils.version
+current_version = distutils.version.StrictVersion(platform.python_version())
+version_with_ssl_fixed = distutils.version.StrictVersion('2.7.9')
+requests_lib = 'requests' if current_version >= version_with_ssl_fixed else 'requests[security]' 
+
 INSTALL_REQUIRES = [
     'click',
     'configobj',
     'datapackage',
     'goodtables==1.0.0a5',
-    'requests',
+    requests_lib,
     'six',
     'future'
 ]
