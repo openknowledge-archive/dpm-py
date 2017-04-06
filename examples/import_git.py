@@ -68,8 +68,15 @@ def run():
             publish_data_package(arguments.link)
         elif arguments.type == 'multiple':
             urls = get_all_git_url(arguments.link)
+            failed = []
             for k, v in urls.items():
-                publish_data_package(git_url=v, count=k)
+                try:
+                    publish_data_package(git_url=v, count=k)
+                except Exception as e:
+                    failed.append({'dataset': v, 'error': e})
+            print ('\nWarning: Following datasets were skiped as failed to publish:\n')
+            for package in failed:
+                print ('---\n\nDataSet: %s\n\nREASON: %s' %(package.get('dataset'), package.get('error')))
 
         if os.path.isdir(DIR_NAME_PREFIX):
             shutil.rmtree(DIR_NAME_PREFIX)
