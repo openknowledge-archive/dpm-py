@@ -28,7 +28,7 @@ def publish_data_package(git_url, count=0):
         dir_name = DIR_NAME_PREFIX + "/" + str(count)
         clone_git_repo(git_url=git_url, dir_name=dir_name)
         conf = config.read_config()
-        client.Client(data_package_path=dir_name, config=conf).publish()
+        client.Client(data_package_path=dir_name, config=conf, datavalidate=True).publish()
 
 
 def clone_git_repo(git_url, dir_name):
