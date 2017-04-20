@@ -11,37 +11,21 @@ For more about data packages see http://frictionlessdata.io/data-packages
 
 [dp]: http://frictionlessdata.io/data-packages
 
-## Install
+## Developers
 
-Until the new code available on pypi, you can install it from this repo:
-
-```
-[sudo] pip install git+https://github.com/frictionlessdata/dpm-py.git
-```
-
-## Configuration
-
-dpm can be configured using `dpm configure` command. It will ask you
-to provide username, access_token and server address of datapackage registry.
-
-The config is stored in ~/.dpm/config, you can edit it with text editor.
-Simple example config file can look like this:
+### Setup 
 
 ```
-username = myname
-access_token = mypass
-server = https://example.com
+git clone https://github.com/frictionlessdata/dpm-py.git
+```
+
+### Test
+
+```
+python setup.py test
 ```
 
 ## Usage
 
-To publish datapackage, go to the datapackage directory (with datapackage.json) and
-launch `dpm publish`. If your configured username and access_token are correct, dpm will
-upload datapackage.json and all relevant resources to the registry server.
-
-## Testing
-
-1. Clone the repo 
-
-2. Run `python setup.py test`
+See documentations for publishing https://frictionlessdata.github.io/dpr-docs/publishers/
 
