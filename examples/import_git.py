@@ -1,4 +1,14 @@
 # -*- coding: utf-8 -*-
+"""
+This script cheks if all the packages published by publisher on Datahub are working
+fine and returning status 200.
+
+By default script awaits that dpm credentials are set in ~/.dpm/config and getting
+Publisher and Server to check against from there. You can also set this argguments
+by adding optional -p (--publisher) publisher_name and -s (--server) server_url
+flags when running script
+"""
+
 from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
@@ -28,7 +38,7 @@ def publish_data_package(git_url, count=0):
         dir_name = DIR_NAME_PREFIX + "/" + str(count)
         clone_git_repo(git_url=git_url, dir_name=dir_name)
         conf = config.read_config()
-        client.Client(data_package_path=dir_name, config=conf, datavalidate=True).publish()
+        client.Client(data_package_path=dir_name, config=conf).publish()
 
 
 def clone_git_repo(git_url, dir_name):
