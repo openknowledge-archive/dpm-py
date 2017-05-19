@@ -1,3 +1,12 @@
+"""
+This script cheks if all the packages published by publisher on Datahub are working
+fine and returning status 200.
+
+By default script awaits that dpm credentials are set in ~/.dpm/config and getting
+Publisher and Server to check against from there. You can also set this argguments
+by adding optional -p (--publisher) publisher_name and -s (--server) server_url
+flags when running script
+"""
 # -*- coding: utf-8 -*-
 from __future__ import division
 from __future__ import print_function
