@@ -1,8 +1,36 @@
-import json
+'''
+This script is used to fix commmon issues for datapackage.json, like changing yet
+unsupported date formats for fields with type date, or unsupported types for
+numeric fields.
+Script also fixes commonly made mistake while creating datapackage.json. According
+to Frictionless Data spec metadata describing data should not directly be objects,
+but elements of the list Eg:
 
-# This script modifies date type format to "any" in fields list. 
-# Also, changes unsupported number types to "number"
-# Plus, modifies ojbects to list of objects 
+## Bad
+{
+  "name": "example",
+  "licenses": {
+    "name": "example license",
+    "url": "https://example/license.com"
+  }
+}
+
+## Good
+{
+  "name": "example",
+  "licenses": [
+    {
+    "name": "example license",
+    "url": "https://example/license.com"
+    }
+  ]
+}
+
+Script can be used form Command Line Interface (CLI).
+`python modify.py --help` for instructions
+'''
+
+import json
 
 class Modify(object):
     def __init__(self, path='datapackage.json'):
