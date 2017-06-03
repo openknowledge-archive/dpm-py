@@ -296,7 +296,7 @@ class ClientPublishSuccessTest(BaseClientTestCase):
                          "README.md": {
                              "md5": '2ODaQHCqodO2B/cbf03lgA==',
                              "size": 24,
-                             "type": 'binary/octet-stream',
+                             "type": 'text/plain',
                              'name': 'README.md'
                          },
                          "datapackage.json": {
@@ -308,7 +308,7 @@ class ClientPublishSuccessTest(BaseClientTestCase):
                          "data/some-data.csv": {
                              "md5": 'Nlu4VmSF8ZT6wK4QjL8iyw==',
                              "size": 12,
-                             "type": 'binary/octet-stream',
+                             "type": 'text/plain',
                              'name': 'data/some-data.csv'
                          }
                      }
