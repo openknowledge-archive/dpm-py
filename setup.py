@@ -19,7 +19,7 @@ def read(*paths):
 INSTALL_REQUIRES = [
     'click',
     'configobj',
-    'datapackage',
+    'datapackage<1.0',
     'goodtables==1.0.0a5',
     'requests[security]',
     'six',
